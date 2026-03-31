@@ -1,4 +1,4 @@
-/** One row from YAML `lineChart:` / `barChart:` frontmatter (Recharts `data` array). */
+/** One row from YAML `lineChart:` / `barChart:` / `pieChart:` frontmatter (Recharts `data` array). */
 export type SlideChartRow = Record<string, unknown>;
 
 export function parseChartRowsFromFrontmatter(raw: unknown): SlideChartRow[] | undefined {

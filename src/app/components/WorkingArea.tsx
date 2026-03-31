@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Terminal } from './Terminal';
 import { Code, Terminal as TerminalIcon } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
@@ -22,6 +22,19 @@ export function WorkingArea({ htmlContent, workingAreaType, onContentChange, onS
 
   const hasContent = !!htmlContent;
   const contentType = workingAreaType ?? 'html';
+
+  useEffect(() => {
+    const onToggleSource = () => {
+      if (mode !== 'content' || !hasContent) return;
+      setShowSource((prev) => {
+        const next = !prev;
+        onSourceToggle?.(next);
+        return next;
+      });
+    };
+    window.addEventListener('markdown-slider:toggle-source', onToggleSource);
+    return () => window.removeEventListener('markdown-slider:toggle-source', onToggleSource);
+  }, [mode, hasContent, onSourceToggle]);
 
   return (
     <div className="h-full w-full flex flex-col bg-zinc-900 overflow-hidden shadow-xl relative">
@@ -64,7 +77,7 @@ export function WorkingArea({ htmlContent, workingAreaType, onContentChange, onS
                   ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
                   : 'bg-zinc-800/70 border-zinc-700/50 text-zinc-400 hover:text-white hover:bg-zinc-700'
               }`}
-              title={showSource ? 'Show preview (Esc)' : 'Edit source'}
+              title={showSource ? 'Show preview (Esc)' : 'Edit source (E)'}
             >
               <Code className="w-3.5 h-3.5" />
             </button>

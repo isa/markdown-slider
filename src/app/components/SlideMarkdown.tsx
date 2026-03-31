@@ -8,7 +8,14 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { parseSlideSegments } from '../markdown/slideColumnSegments';
 import type { SlideChartRow } from '../slideChartData';
-import { SlideBarChartEmbed, SlideLineChartEmbed } from './SlideChartEmbeds';
+import {
+  SlideBarChartEmbed,
+  SlideLineChartEmbed,
+  SlidePieChartEmbed,
+  type LineChartEndMarker,
+  type PieChartLegendPosition,
+} from './SlideChartEmbeds';
+import { SlideMermaidEmbed, type MermaidNodeStyle } from './SlideMermaidEmbed';
 
 const slideSanitizeSchema = {
   ...defaultSchema,
@@ -45,21 +52,39 @@ function codeToString(children: ReactNode): string {
   return String(children ?? '');
 }
 
+/** Raw text from `code` children — do not strip trailing newline (needed to detect fenced vs inline). */
+function codeToStringRaw(children: ReactNode): string {
+  if (typeof children === 'string') return children;
+  if (Array.isArray(children)) return children.map(codeToStringRaw).join('');
+  return String(children ?? '');
+}
+
 /** Single markdown document (no @@@columns splitting) — used inside column cells. */
 export function SlideMarkdownBody({
   markdown,
   lineChartData,
   barChartData,
+  pieChartData,
+  pieChartLegendPosition,
   barChartStacked,
   lineChartArea,
+  lineChartEndMarker,
+  mermaidNodes,
 }: {
   markdown: string;
   lineChartData?: SlideChartRow[];
   barChartData?: SlideChartRow[];
+  pieChartData?: SlideChartRow[];
+  /** From YAML `pieChartLegendPosition:` */
+  pieChartLegendPosition?: PieChartLegendPosition;
   /** From YAML `barChartStacked:` */
   barChartStacked?: boolean;
   /** From YAML `lineChartArea:` / `area:` */
   lineChartArea?: boolean;
+  /** From YAML `lineChartEndMarker:` / `lineEndMarker:` */
+  lineChartEndMarker?: LineChartEndMarker;
+  /** From YAML `mermaidNodes:` */
+  mermaidNodes?: MermaidNodeStyle;
 }) {
   return (
     <ReactMarkdown
@@ -93,11 +118,23 @@ export function SlideMarkdownBody({
           <img {...rest} alt={alt ?? ''} src={src} className="slide-img" loading="lazy" />
         ),
         code: ({ children, className }) => {
+          const rawCode = codeToStringRaw(children);
           const codeString = codeToString(children);
           const langMatch = /language-([\w-]+)/.exec(className ?? '');
           const lang = langMatch?.[1];
-          /* Fenced blocks from mdast always end with \n; inline <code class="language-"> from HTML usually does not */
-          const isFencedBlock = Boolean(lang && /\n$/.test(codeString));
+          /* Fenced blocks: mdast ends with \n and/or multiple lines. Must use rawCode — codeString strips trailing \n so /\n$/ would always fail. */
+          const isFencedBlock = Boolean(
+            lang && (/\n$/.test(rawCode) || rawCode.includes('\n')),
+          );
+
+          if (lang === 'mermaid') {
+            return (
+              <SlideMermaidEmbed
+                definition={rawCode.replace(/\n$/, '')}
+                nodeStyle={mermaidNodes ?? 'filled'}
+              />
+            );
+          }
 
           if (lang && isFencedBlock) {
             return (
@@ -216,9 +253,19 @@ export function SlideMarkdownBody({
         ),
         div: ({ className, children, ...rest }) => {
           if (className === 'slide-embed-line-chart')
-            return <SlideLineChartEmbed data={lineChartData} lineChartArea={lineChartArea} />;
+            return (
+              <SlideLineChartEmbed
+                data={lineChartData}
+                lineChartArea={lineChartArea}
+                lineChartEndMarker={lineChartEndMarker}
+              />
+            );
           if (className === 'slide-embed-bar-chart')
             return <SlideBarChartEmbed data={barChartData} stacked={barChartStacked === true} />;
+          if (className === 'slide-embed-pie-chart')
+            return (
+              <SlidePieChartEmbed data={pieChartData} legendPosition={pieChartLegendPosition} />
+            );
           return (
             <div {...rest} className={className}>
               {children}
@@ -236,14 +283,22 @@ function ColumnGrid({
   cells,
   lineChartData,
   barChartData,
+  pieChartData,
+  pieChartLegendPosition,
   barChartStacked,
   lineChartArea,
+  lineChartEndMarker,
+  mermaidNodes,
 }: {
   cells: string[];
   lineChartData?: SlideChartRow[];
   barChartData?: SlideChartRow[];
+  pieChartData?: SlideChartRow[];
+  pieChartLegendPosition?: PieChartLegendPosition;
   barChartStacked?: boolean;
   lineChartArea?: boolean;
+  lineChartEndMarker?: LineChartEndMarker;
+  mermaidNodes?: MermaidNodeStyle;
 }) {
   const n = Math.min(4, Math.max(1, cells.length));
   return (
@@ -254,8 +309,12 @@ function ColumnGrid({
             markdown={cell}
             lineChartData={lineChartData}
             barChartData={barChartData}
+            pieChartData={pieChartData}
+            pieChartLegendPosition={pieChartLegendPosition}
             barChartStacked={barChartStacked}
             lineChartArea={lineChartArea}
+            lineChartEndMarker={lineChartEndMarker}
+            mermaidNodes={mermaidNodes}
           />
         </div>
       ))}
@@ -269,18 +328,30 @@ interface SlideMarkdownProps {
   lineChartData?: SlideChartRow[];
   /** From slide YAML `barChart:` — wired to `<div class="slide-embed-bar-chart">` */
   barChartData?: SlideChartRow[];
+  /** From slide YAML `pieChart:` — wired to `<div class="slide-embed-pie-chart">` */
+  pieChartData?: SlideChartRow[];
+  /** From slide YAML `pieChartLegendPosition:` */
+  pieChartLegendPosition?: PieChartLegendPosition;
   /** From slide YAML `barChartStacked: true` */
   barChartStacked?: boolean;
   /** From slide YAML `lineChartArea:` / `area:` */
   lineChartArea?: boolean;
+  /** From slide YAML `lineChartEndMarker:` / `lineEndMarker:` */
+  lineChartEndMarker?: LineChartEndMarker;
+  /** From slide YAML `mermaidNodes:` */
+  mermaidNodes?: MermaidNodeStyle;
 }
 
 export function SlideMarkdown({
   markdown,
   lineChartData,
   barChartData,
+  pieChartData,
+  pieChartLegendPosition,
   barChartStacked,
   lineChartArea,
+  lineChartEndMarker,
+  mermaidNodes,
 }: SlideMarkdownProps) {
   const segments = useMemo(() => parseSlideSegments(markdown), [markdown]);
 
@@ -293,8 +364,12 @@ export function SlideMarkdown({
             markdown={seg.content}
             lineChartData={lineChartData}
             barChartData={barChartData}
+            pieChartData={pieChartData}
+            pieChartLegendPosition={pieChartLegendPosition}
             barChartStacked={barChartStacked}
             lineChartArea={lineChartArea}
+            lineChartEndMarker={lineChartEndMarker}
+            mermaidNodes={mermaidNodes}
           />
         ) : (
           <ColumnGrid
@@ -302,8 +377,12 @@ export function SlideMarkdown({
             cells={seg.cells}
             lineChartData={lineChartData}
             barChartData={barChartData}
+            pieChartData={pieChartData}
+            pieChartLegendPosition={pieChartLegendPosition}
             barChartStacked={barChartStacked}
             lineChartArea={lineChartArea}
+            lineChartEndMarker={lineChartEndMarker}
+            mermaidNodes={mermaidNodes}
           />
         ),
       )}

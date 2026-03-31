@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, type CSSProperties } from 'react';
+import { useMemo, useState, useRef, useEffect, type CSSProperties } from 'react';
 import { Code } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SourceEditor } from './SourceEditor';
@@ -38,8 +38,12 @@ export function SlidePresenter({
     imageCaption,
     lineChart,
     barChart,
+    pieChart,
+    pieChartLegendPosition,
     barChartStacked,
     lineChartArea,
+    lineChartEndMarker,
+    mermaidNodes,
   } = useMemo(() => {
     if (slideType !== 'md') {
       return {
@@ -54,8 +58,12 @@ export function SlidePresenter({
         imageCaption: undefined,
         lineChart: undefined,
         barChart: undefined,
+        pieChart: undefined,
+        pieChartLegendPosition: undefined,
         barChartStacked: undefined,
         lineChartArea: undefined,
+        lineChartEndMarker: undefined,
+        mermaidNodes: undefined,
       };
     }
     return parseSlideMarkdown(slideContent, isDarkMode);
@@ -80,6 +88,18 @@ export function SlidePresenter({
 
   const direction = currentSlide >= prevSlideRef.current ? 1 : -1;
   prevSlideRef.current = currentSlide;
+
+  useEffect(() => {
+    const onToggleSource = () => {
+      setShowSource((prev) => {
+        const next = !prev;
+        onSourceToggle?.(next);
+        return next;
+      });
+    };
+    window.addEventListener('markdown-slider:toggle-source', onToggleSource);
+    return () => window.removeEventListener('markdown-slider:toggle-source', onToggleSource);
+  }, [onSourceToggle]);
 
   const variants = {
     enter: (dir: number) => ({
@@ -148,7 +168,7 @@ export function SlidePresenter({
                 : 'bg-white/80 border-zinc-300 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200'
           }`}
           style={{ width: 28, height: 28 }}
-          title={showSource ? 'Close editor (Esc)' : 'Edit source'}
+          title={showSource ? 'Close editor (Esc)' : 'Edit source (E)'}
         >
           <Code style={{ width: 14, height: 14 }} />
         </button>
@@ -194,8 +214,12 @@ export function SlidePresenter({
                     markdown={body}
                     lineChartData={lineChart}
                     barChartData={barChart}
+                    pieChartData={pieChart}
+                    pieChartLegendPosition={pieChartLegendPosition}
                     barChartStacked={barChartStacked}
                     lineChartArea={lineChartArea}
+                    lineChartEndMarker={lineChartEndMarker}
+                    mermaidNodes={mermaidNodes}
                   />
                 </div>
                 {title ? (
@@ -229,8 +253,12 @@ export function SlidePresenter({
                         markdown={body}
                         lineChartData={lineChart}
                         barChartData={barChart}
+                        pieChartData={pieChart}
+                        pieChartLegendPosition={pieChartLegendPosition}
                         barChartStacked={barChartStacked}
                         lineChartArea={lineChartArea}
+                        lineChartEndMarker={lineChartEndMarker}
+                        mermaidNodes={mermaidNodes}
                       />
                     </div>
                     {imageCaption ? (
@@ -260,8 +288,12 @@ export function SlidePresenter({
                     markdown={body}
                     lineChartData={lineChart}
                     barChartData={barChart}
+                    pieChartData={pieChart}
+                    pieChartLegendPosition={pieChartLegendPosition}
                     barChartStacked={barChartStacked}
                     lineChartArea={lineChartArea}
+                    lineChartEndMarker={lineChartEndMarker}
+                    mermaidNodes={mermaidNodes}
                   />
                 </div>
               </div>

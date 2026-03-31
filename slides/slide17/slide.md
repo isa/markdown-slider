@@ -3,6 +3,7 @@ theme: default
 title: Line chart (Recharts)
 subtitle: Up to 5 series
 lineChartArea: true
+lineChartEndMarker: arrow
 lineChart:
   - q: Q1
     alpha: 42
@@ -30,7 +31,7 @@ lineChart:
     epsilon: 24
 ---
 
-First column = X axis; up to **five** numeric series. With **`lineChartArea: true`** or **`area: true`** (the default), each series is drawn as a line with the region underneath filled at **10% opacity of that line’s color**. Set **`area: false`** for strokes only, no fill.
+First column = X axis; up to **five** numeric series. With **`lineChartArea: true`** or **`area: true`** (the default), each series is drawn as a line with the region underneath filled at **10% opacity of that line’s color**. Set **`area: false`** for strokes only, no fill. Optional **`lineChartEndMarker:`** (alias **`lineEndMarker:`**): **`arrow`**, **`circle`**, or **`openCircle`** — marker at the last point of each series (omit for none).
 
 <div class="slide-embed-line-chart"></div>
 

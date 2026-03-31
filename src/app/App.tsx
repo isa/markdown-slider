@@ -121,6 +121,11 @@ function App() {
           setGoToSlideValue('');
           setGoToSlideOpen(true);
         }
+      } else if (e.key === 'e' || e.key === 'E') {
+        if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent('markdown-slider:toggle-source'));
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -297,7 +302,7 @@ function App() {
 
         {/* Footer dots */}
         <div className="shrink-0 pb-6 px-10 pt-1 flex items-center justify-between">
-          <span className={`text-[10px] ${isDarkMode ? 'text-zinc-600' : 'text-zinc-400'}`}>← → nav · G go to · F flip · T theme</span>
+          <span className={`text-[10px] ${isDarkMode ? 'text-zinc-600' : 'text-zinc-400'}`}>← → nav · G go to · E source · F flip · T theme</span>
           <div className="flex items-center gap-3">
             <span className={`text-xs ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
               {currentSlide + 1} / {totalSlides}

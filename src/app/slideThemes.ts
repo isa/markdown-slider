@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import matter from 'gray-matter';
+import type { LineChartEndMarker } from './components/SlideChartEmbeds';
 import { parseChartRowsFromFrontmatter, type SlideChartRow } from './slideChartData';
 
 export type { SlideChartRow } from './slideChartData';
@@ -133,10 +134,18 @@ export function parseSlideMarkdown(
   lineChart?: SlideChartRow[];
   /** YAML `barChart:` rows for `<div class="slide-embed-bar-chart">` */
   barChart?: SlideChartRow[];
+  /** YAML `pieChart:` rows for `<div class="slide-embed-pie-chart">` */
+  pieChart?: SlideChartRow[];
+  /** YAML `pieChartLegendPosition:` — `left` | `right` | `bottom` (default) */
+  pieChartLegendPosition?: 'left' | 'right' | 'bottom';
   /** YAML `barChartStacked: true` — stacked bars instead of grouped */
   barChartStacked?: boolean;
   /** YAML `lineChartArea:` or `area:` — fill under lines at 10% of stroke; `false` = lines only */
   lineChartArea?: boolean;
+  /** YAML `lineChartEndMarker:` / `lineEndMarker:` — `arrow` | `circle` | `openCircle` */
+  lineChartEndMarker?: LineChartEndMarker;
+  /** YAML `mermaidNodes:` — `filled` (default) or `outline` (stroke-only flowchart boxes) */
+  mermaidNodes?: 'filled' | 'outline';
 } {
   const { data, content } = matter(raw);
   const d = data as Record<string, unknown>;
@@ -180,6 +189,18 @@ export function parseSlideMarkdown(
 
   const lineChart = parseChartRowsFromFrontmatter(d.lineChart);
   const barChart = parseChartRowsFromFrontmatter(d.barChart);
+  const pieChart = parseChartRowsFromFrontmatter(d.pieChart);
+  let pieChartLegendPosition: 'left' | 'right' | 'bottom' | undefined;
+  const plpRaw =
+    d.pieChartLegendPosition ??
+    d.pieLegendPosition ??
+    (typeof (d as Record<string, unknown>).pie_chart_legend_position === 'string'
+      ? (d as Record<string, unknown>).pie_chart_legend_position
+      : undefined);
+  if (typeof plpRaw === 'string') {
+    const s = plpRaw.trim().toLowerCase();
+    if (s === 'left' || s === 'right' || s === 'bottom') pieChartLegendPosition = s;
+  }
   const bcs = d.barChartStacked;
   let barChartStacked: boolean | undefined;
   if (bcs === true || bcs === 'true' || bcs === 1) barChartStacked = true;
@@ -189,6 +210,25 @@ export function parseSlideMarkdown(
   let lineChartArea: boolean | undefined;
   if (lca === true || lca === 'true' || lca === 1) lineChartArea = true;
   else if (lca === false || lca === 'false' || lca === 0) lineChartArea = false;
+
+  let lineChartEndMarker: LineChartEndMarker | undefined;
+  const lemRaw = d.lineChartEndMarker ?? d.lineEndMarker;
+  if (typeof lemRaw === 'string') {
+    const s = lemRaw.trim().toLowerCase().replace(/[-_]/g, '');
+    if (s === 'arrow') lineChartEndMarker = 'arrow';
+    else if (s === 'circle' || s === 'dot' || s === 'disc') lineChartEndMarker = 'circle';
+    else if (s === 'opencircle' || s === 'open' || s === 'ring' || s === 'hollow')
+      lineChartEndMarker = 'openCircle';
+    else if (s === 'none' || s === 'off' || s === 'false') lineChartEndMarker = 'none';
+  }
+
+  let mermaidNodes: 'filled' | 'outline' | undefined;
+  const mn = d.mermaidNodes;
+  if (typeof mn === 'string') {
+    const s = mn.trim().toLowerCase();
+    if (s === 'outline' || s === 'outline-only' || s === 'stroke') mermaidNodes = 'outline';
+    else if (s === 'filled' || s === 'fill solid') mermaidNodes = 'filled';
+  }
 
   return {
     body: content.trim(),
@@ -202,7 +242,11 @@ export function parseSlideMarkdown(
     imageCaption,
     lineChart,
     barChart,
+    pieChart,
+    pieChartLegendPosition,
     barChartStacked,
     lineChartArea,
+    lineChartEndMarker,
+    mermaidNodes,
   };
 }
