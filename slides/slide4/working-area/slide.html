@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body {
+    margin: 0; padding: 2rem; font-family: sans-serif;
+    background: #1a1a1a; color: #e5e5e5;
+  }
+  .card {
+    background: #2a2a2a; border-radius: 12px; padding: 1.5rem;
+    margin-bottom: 1rem; border: 1px solid #333;
+  }
+  .counter { font-size: 3rem; text-align: center; margin: 1rem 0; }
+  .buttons { display: flex; gap: 0.75rem; justify-content: center; }
+  button {
+    padding: 0.6rem 1.5rem; border: none; border-radius: 8px;
+    font-size: 1rem; cursor: pointer; color: white;
+  }
+  .dec { background: #ef4444; }
+  .inc { background: #22c55e; }
+  .reset { background: #6366f1; }
+</style>
+</head>
+<body>
+  <h2>🧮 Interactive Counter</h2>
+  <div class="card">
+    <div class="counter" id="count">0</div>
+    <div class="buttons">
+      <button class="dec" onclick="update(-1)">➖ Decrease</button>
+      <button class="reset" onclick="reset()">↺ Reset</button>
+      <button class="inc" onclick="update(1)">➕ Increase</button>
+    </div>
+  </div>
+  <script>
+    let count = 0;
+    function update(n) { count += n; document.getElementById('count').textContent = count; }
+    function reset() { count = 0; document.getElementById('count').textContent = 0; }
+  </script>
+</body>
+</html>

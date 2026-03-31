@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body {
+    margin: 0; padding: 2rem; font-family: 'Courier New', monospace;
+    background: #1a1a1a; color: #e5e5e5;
+  }
+  .editor { background: #2a2a2a; border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+  textarea {
+    width: 100%; min-height: 120px; background: #111; color: #4ade80;
+    border: 1px solid #444; border-radius: 6px; padding: 0.75rem;
+    font-family: 'Courier New', monospace; font-size: 14px; resize: vertical;
+  }
+  button {
+    margin-top: 0.75rem; padding: 0.5rem 1.25rem; background: #3b82f6;
+    color: white; border: none; border-radius: 6px; cursor: pointer;
+    font-size: 14px;
+  }
+  button:hover { background: #2563eb; }
+  #output {
+    margin-top: 1rem; padding: 1rem; background: #111; border-radius: 6px;
+    border: 1px solid #333; min-height: 40px; white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+  <h2>⚡ Live Code Runner</h2>
+  <div class="editor">
+    <textarea id="code">function hello() {
+  console.log("Hello, World!");
+}
+hello();</textarea>
+    <button onclick="runCode()">▶ Run Code</button>
+    <div id="output"></div>
+  </div>
+  <script>
+    function runCode() {
+      const code = document.getElementById('code').value;
+      const output = document.getElementById('output');
+      const oldLog = console.log;
+      let logs = [];
+      console.log = (...args) => logs.push(args.map(String).join(' '));
+      try { eval(code); output.style.color = '#4ade80'; output.textContent = logs.join('\n') || '(no output)'; }
+      catch(e) { output.style.color = '#f87171'; output.textContent = '❌ ' + e.message; }
+      console.log = oldLog;
+    }
+  </script>
+</body>
+</html>
