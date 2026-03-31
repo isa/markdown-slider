@@ -1,9 +1,9 @@
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useRef, type CSSProperties } from 'react';
 import { Code } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SourceEditor } from './SourceEditor';
 import { SlideMarkdown } from './SlideMarkdown';
-import { parseSlideMarkdown } from '../slideThemes';
+import { parseSlideMarkdown, type SlideLayout } from '../slideThemes';
 
 interface SlidePresenterProps {
   slideContent: string;
@@ -26,17 +26,48 @@ export function SlidePresenter({
   const prevSlideRef = useRef(currentSlide);
   const prevSlideForSource = useRef(currentSlide);
 
-  const { body, theme, title, subtitle } = useMemo(() => {
+  const {
+    body,
+    theme,
+    title,
+    subtitle,
+    layout,
+    coverBackgroundImage,
+    imageLayoutMaxWidth,
+    imageLayoutMaxHeight,
+    imageCaption,
+    lineChart,
+    barChart,
+    barChartStacked,
+    lineChartArea,
+  } = useMemo(() => {
     if (slideType !== 'md') {
       return {
         body: '',
         theme: parseSlideMarkdown('', isDarkMode).theme,
         title: undefined,
         subtitle: undefined,
+        layout: 'content' as SlideLayout,
+        coverBackgroundImage: undefined,
+        imageLayoutMaxWidth: undefined,
+        imageLayoutMaxHeight: undefined,
+        imageCaption: undefined,
+        lineChart: undefined,
+        barChart: undefined,
+        barChartStacked: undefined,
+        lineChartArea: undefined,
       };
     }
     return parseSlideMarkdown(slideContent, isDarkMode);
   }, [slideContent, slideType, isDarkMode]);
+
+  const imageSlideCssVars = useMemo((): CSSProperties => {
+    if (layout !== 'image') return {};
+    const v: Record<string, string> = {};
+    if (imageLayoutMaxWidth) v['--slide-image-layout-max-width'] = imageLayoutMaxWidth;
+    if (imageLayoutMaxHeight) v['--slide-image-layout-max-height'] = imageLayoutMaxHeight;
+    return v as CSSProperties;
+  }, [layout, imageLayoutMaxWidth, imageLayoutMaxHeight]);
 
   // Close source editor when slide changes
   if (currentSlide !== prevSlideForSource.current) {
@@ -53,30 +84,50 @@ export function SlidePresenter({
   const variants = {
     enter: (dir: number) => ({
       x: dir > 0 ? '40%' : '-40%',
+      y: 0,
       opacity: 0,
-      scale: 0.95,
     }),
     center: {
       x: 0,
+      y: 0,
       opacity: 1,
-      scale: 1,
     },
     exit: (dir: number) => ({
       x: dir > 0 ? '-40%' : '40%',
+      y: 0,
       opacity: 0,
-      scale: 0.95,
     }),
   };
+
+  const isCover = layout === 'cover';
+  const isImage = layout === 'image';
+  const isDeckHeaderTop =
+    (layout === 'content' || layout === 'infographic') && Boolean(title);
 
   const rootClass = [
     'slide-root',
     'slide-prose',
     theme.rootClassName,
-    theme.align && `slide-align--${theme.align}`,
-    title && 'slide-root--deck-header',
+    theme.align &&
+    (layout === 'content' || layout === 'infographic' || layout === 'cover' || layout === 'image')
+      ? `slide-align--${theme.align}`
+      : null,
+    isDeckHeaderTop && 'slide-root--deck-header',
+    isCover && 'slide-root--cover',
+    isCover && coverBackgroundImage && 'slide-root--cover--fullbleed',
+    isImage && 'slide-root--image',
   ]
     .filter(Boolean)
     .join(' ');
+
+  const coverHasBg = Boolean(isCover && coverBackgroundImage);
+
+  const motionShellClass =
+    coverHasBg
+      ? 'absolute inset-0 flex justify-center items-stretch p-0 overflow-hidden min-h-0'
+      : title || isCover || isImage
+        ? 'absolute inset-0 flex justify-center items-stretch px-10 py-8 overflow-hidden min-h-0'
+        : 'absolute inset-0 flex items-center justify-center px-10 py-8 overflow-hidden min-h-0';
 
   return (
     <div
@@ -113,12 +164,9 @@ export function SlidePresenter({
             transition={{
               duration: 0.2,
               ease: [0.25, 0.1, 0.25, 1],
+              opacity: { duration: 0.18 },
             }}
-            className={
-              title
-                ? 'absolute inset-0 flex justify-center items-stretch px-10 py-8 overflow-hidden min-h-0'
-                : 'absolute inset-0 flex items-center justify-center px-10 py-8 overflow-hidden min-h-0'
-            }
+            className={motionShellClass}
           >
             {slideType === 'html' ? (
               <iframe
@@ -127,6 +175,70 @@ export function SlidePresenter({
                 title={`Slide ${currentSlide + 1}`}
                 sandbox="allow-scripts"
               />
+            ) : isCover ? (
+              <div className={rootClass} style={theme.cssVariables}>
+                {coverBackgroundImage ? (
+                  <>
+                    <div
+                      className="slide-cover-bg-layer"
+                      aria-hidden
+                      style={{
+                        backgroundImage: `url(${JSON.stringify(coverBackgroundImage)})`,
+                      }}
+                    />
+                    <div className="slide-cover-bg-overlay" aria-hidden />
+                  </>
+                ) : null}
+                <div className="slide-deck-body slide-deck-body--cover">
+                  <SlideMarkdown
+                    markdown={body}
+                    lineChartData={lineChart}
+                    barChartData={barChart}
+                    barChartStacked={barChartStacked}
+                    lineChartArea={lineChartArea}
+                  />
+                </div>
+                {title ? (
+                  <header className="slide-deck-header slide-deck-header--cover">
+                    <div className="slide-deck-header__row slide-deck-header__row--cover">
+                      <span
+                        className={`slide-deck-header__title${coverHasBg ? ' slide-deck-header__title--cover-on-photo' : ''}`}
+                      >
+                        {title}
+                      </span>
+                      {subtitle ? (
+                        <span
+                          className={`slide-deck-header__subtitle slide-deck-header__subtitle--cover${coverHasBg ? ' slide-deck-header__subtitle--cover-on-photo' : ''}`}
+                        >
+                          {subtitle}
+                        </span>
+                      ) : null}
+                    </div>
+                  </header>
+                ) : null}
+              </div>
+            ) : isImage ? (
+              <div
+                className={rootClass}
+                style={{ ...theme.cssVariables, ...imageSlideCssVars }}
+              >
+                <div className="slide-deck-body slide-deck-body--image">
+                  <div className="slide-image-layout-stack">
+                    <div className="slide-image-layout-figure">
+                      <SlideMarkdown
+                        markdown={body}
+                        lineChartData={lineChart}
+                        barChartData={barChart}
+                        barChartStacked={barChartStacked}
+                        lineChartArea={lineChartArea}
+                      />
+                    </div>
+                    {imageCaption ? (
+                      <p className="slide-figure-caption">{imageCaption}</p>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className={rootClass} style={theme.cssVariables}>
                 {title ? (
@@ -144,7 +256,13 @@ export function SlidePresenter({
                   </header>
                 ) : null}
                 <div className="slide-deck-body">
-                  <SlideMarkdown markdown={body} />
+                  <SlideMarkdown
+                    markdown={body}
+                    lineChartData={lineChart}
+                    barChartData={barChart}
+                    barChartStacked={barChartStacked}
+                    lineChartArea={lineChartArea}
+                  />
                 </div>
               </div>
             )}

@@ -99,6 +99,202 @@
   height: 0;
 }
 
+/* --- Layout: cover (title + faded subtitle bottom-left; body above) --- */
+.slide-root.slide-root--cover {
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  gap: 1rem;
+}
+
+.slide-root.slide-root--cover .slide-deck-body--cover {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.slide-root.slide-root--cover .slide-deck-body--cover::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.slide-deck-header--cover {
+  flex-shrink: 0;
+  width: 100%;
+  text-align: left;
+  align-self: flex-start;
+}
+
+.slide-deck-header__row--cover {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.slide-deck-header__subtitle--cover {
+  opacity: 0.55;
+  font-size: calc(var(--slide-font-size-body) * 1.08);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--slide-text-muted);
+  line-height: 1.25;
+}
+
+/* Cover + frontmatter `backgroundImage:` — full-bleed photo behind body + title */
+.slide-root.slide-root--cover.slide-root--cover--fullbleed {
+  position: relative;
+  isolation: isolate;
+  padding: 0;
+  max-width: none;
+  width: 100%;
+  margin-inline: 0;
+  overflow: hidden;
+}
+
+.slide-cover-bg-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: inherit;
+}
+
+.slide-cover-bg-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.78) 0%,
+    rgba(0, 0, 0, 0.38) 42%,
+    rgba(0, 0, 0, 0.12) 100%
+  );
+}
+
+.slide-root--cover--fullbleed .slide-deck-body--cover,
+.slide-root--cover--fullbleed .slide-deck-header--cover {
+  position: relative;
+  z-index: 2;
+}
+
+.slide-root--cover--fullbleed .slide-deck-body--cover {
+  padding: 1.5rem 2rem 0.5rem;
+}
+
+.slide-root--cover--fullbleed .slide-deck-header--cover {
+  padding: 0.75rem 2rem 1.5rem;
+}
+
+.slide-deck-header__title--cover-on-photo {
+  color: #fafafa;
+  text-shadow:
+    0 2px 14px rgba(0, 0, 0, 0.85),
+    0 1px 4px rgba(0, 0, 0, 0.95);
+}
+
+.slide-deck-header__subtitle--cover-on-photo {
+  color: rgba(250, 250, 250, 0.78);
+  opacity: 1;
+  text-shadow:
+    0 1px 10px rgba(0, 0, 0, 0.75),
+    0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+/* --- Layout: image (centered figure; optional caption; imageWidth / imageHeight in frontmatter) --- */
+.slide-root.slide-root--image {
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  gap: 0;
+  /* Defaults; override with frontmatter imageWidth / imageHeight → CSS vars on .slide-root */
+  --slide-image-layout-max-width: min(100%, 36rem);
+  --slide-image-layout-max-height: min(52vh, 28rem);
+}
+
+.slide-root--image .slide-deck-body--image {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.slide-root--image .slide-deck-body--image::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.slide-image-layout-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: var(--slide-image-layout-max-width);
+  margin-inline: auto;
+}
+
+.slide-image-layout-figure {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.slide-root--image .slide-image-layout-figure .slide-p {
+  margin: 0;
+  text-align: center;
+  width: 100%;
+}
+
+.slide-root--image .slide-image-layout-figure .slide-img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: var(--slide-image-layout-max-height);
+  height: auto;
+  margin: 0 auto;
+  object-fit: contain;
+  border-radius: var(--slide-image-radius);
+  box-shadow: var(--slide-image-shadow);
+}
+
+.slide-root--image .slide-figure-caption {
+  font-family: var(--slide-font-body);
+  font-size: calc(var(--slide-font-size-body) * 0.64);
+  line-height: 1.4;
+  color: var(--slide-text-muted);
+  text-align: center;
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  padding: 0.5rem 0.75rem 0;
+  box-sizing: border-box;
+  font-style: italic;
+}
+
+.slide-root--image.slide-align--left .slide-figure-caption {
+  text-align: left;
+}
+.slide-root--image.slide-align--right .slide-figure-caption {
+  text-align: right;
+}
+
 .slide-prose {
   font-family: var(--slide-font-body);
   font-size: var(--slide-font-size-body);
@@ -197,6 +393,18 @@
 .slide-accent {
   color: var(--slide-accent);
   font-weight: 600;
+}
+
+/* Recharts embeds (markdown: <div class="slide-embed-line-chart"></div>) */
+.slide-chart-embed {
+  width: 100%;
+  height: min(300px, 42vh);
+  min-height: 220px;
+  margin-top: 0.75rem;
+}
+
+.slide-chart-embed .recharts-wrapper {
+  font-family: var(--slide-font-body);
 }
 
 /* Headings follow slide alignment (inherit) and use theme size / weight / color per level */
@@ -302,10 +510,12 @@
   padding: 1.25rem 1.5rem;
   border-radius: 0.5rem;
   overflow-x: auto;
-  margin: 2rem 0;
+  margin: 2rem 0 3.5rem;
   background: var(--slide-code-bg);
   scrollbar-width: none;
   -ms-overflow-style: none;
+  /* Whole-slide align:center/right must not center code lines (breaks brace alignment) */
+  text-align: left;
 }
 
 .slide-pre::-webkit-scrollbar {
@@ -332,16 +542,48 @@
 .slide-pre + .slide-heading--1,
 .slide-pre + .slide-heading--2,
 .slide-pre + .slide-heading--3 {
-  margin-top: 2rem;
+  margin-top: 3.75rem;
 }
 
 .slide-pre--highlight {
   padding: 0;
   background: var(--slide-code-bg);
+  text-align: left;
+}
+
+.slide-pre--highlight > div {
+  text-align: left;
 }
 
 .slide-pre--highlight .slide-code-block-inner {
-  font-family: var(--slide-font-mono);
+  /* Beat Prism oneDark inline font (Fira Code ligatures skew brace alignment) */
+  font-family: var(--slide-font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  display: block;
+  text-align: left;
+  white-space: pre;
+  tab-size: 2;
+  font-variant-ligatures: none;
+  font-feature-settings: 'liga' 0, 'calt' 0;
+}
+
+/* Prism tokens inherit oneDark font (e.g. Fira Code); force same stack + no ligatures */
+.slide-pre--highlight .slide-code-block-inner .token {
+  font-family: inherit !important;
+  font-variant-ligatures: none !important;
+  font-feature-settings: 'liga' 0, 'calt' 0 !important;
+  vertical-align: baseline;
+}
+
+/* Code inside centered / right-aligned blocks must stay left-aligned for readable structure */
+.slide-prose .slide-align--center .slide-pre,
+.slide-prose .slide-align--center .slide-pre--highlight,
+.slide-prose .align--center .slide-pre,
+.slide-prose .align--center .slide-pre--highlight,
+.slide-prose .slide-align--right .slide-pre,
+.slide-prose .slide-align--right .slide-pre--highlight,
+.slide-prose .align--right .slide-pre,
+.slide-prose .align--right .slide-pre--highlight {
+  text-align: left;
 }
 
 /* Prism / syntax-highlighter token styles often add text-shadow; remove for theme fidelity */
@@ -628,4 +870,40 @@
 .slide-root--stagger.slide-prose:has(.slide-deck-header) .slide-deck-body .slide-table-wrap,
 .slide-root--stagger.slide-prose:has(.slide-deck-header) .slide-deck-body .slide-columns {
   animation-delay: 0.27s;
+}
+
+/* Stagger: cover (body first, header last) */
+.slide-root--stagger.slide-prose.slide-root--cover > .slide-deck-body--cover > * {
+  animation: slide-fade-up 0.45s ease forwards;
+  opacity: 0;
+}
+.slide-root--stagger.slide-prose.slide-root--cover > .slide-deck-body--cover > *:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.slide-root--stagger.slide-prose.slide-root--cover > .slide-deck-body--cover > *:nth-child(2) {
+  animation-delay: 0.12s;
+}
+.slide-root--stagger.slide-prose.slide-root--cover > .slide-deck-body--cover > *:nth-child(3) {
+  animation-delay: 0.19s;
+}
+.slide-root--stagger.slide-prose.slide-root--cover > .slide-deck-header--cover {
+  animation: slide-fade-up 0.45s ease forwards;
+  opacity: 0;
+  animation-delay: 0.26s;
+}
+
+/* Stagger: image */
+.slide-root--stagger.slide-prose.slide-root--image .slide-deck-body--image {
+  animation: slide-fade-in 0.5s ease forwards;
+  opacity: 0;
+}
+.slide-root--stagger.slide-prose.slide-root--image .slide-image-layout-figure {
+  animation: slide-fade-up 0.45s ease forwards;
+  opacity: 0;
+  animation-delay: 0.06s;
+}
+.slide-root--stagger.slide-prose.slide-root--image .slide-figure-caption {
+  animation: slide-fade-up 0.45s ease forwards;
+  opacity: 0;
+  animation-delay: 0.22s;
 }

@@ -1,4 +1,6 @@
-# Thank You
+---
+title: Thank You
+---
 
 **Questions?**
 

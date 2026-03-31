@@ -1,4 +1,6 @@
-# Custom HTML slides
+---
+title: Custom HTML slides
+---
 
 Two different “HTML” features:
 

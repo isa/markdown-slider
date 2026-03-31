@@ -7,6 +7,8 @@ import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { parseSlideSegments } from '../markdown/slideColumnSegments';
+import type { SlideChartRow } from '../slideChartData';
+import { SlideBarChartEmbed, SlideLineChartEmbed } from './SlideChartEmbeds';
 
 const slideSanitizeSchema = {
   ...defaultSchema,
@@ -44,7 +46,21 @@ function codeToString(children: ReactNode): string {
 }
 
 /** Single markdown document (no @@@columns splitting) — used inside column cells. */
-export function SlideMarkdownBody({ markdown }: { markdown: string }) {
+export function SlideMarkdownBody({
+  markdown,
+  lineChartData,
+  barChartData,
+  barChartStacked,
+  lineChartArea,
+}: {
+  markdown: string;
+  lineChartData?: SlideChartRow[];
+  barChartData?: SlideChartRow[];
+  /** From YAML `barChartStacked:` */
+  barChartStacked?: boolean;
+  /** From YAML `lineChartArea:` / `area:` */
+  lineChartArea?: boolean;
+}) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -90,14 +106,29 @@ export function SlideMarkdownBody({ markdown }: { markdown: string }) {
                   language={lang}
                   style={oneDark}
                   PreTag="div"
+                  wrapLines={false}
+                  wrapLongLines={false}
                   customStyle={{
                     margin: 0,
-                    padding: '1.25rem 1.5rem',
+                    padding: '1.25rem 1.5rem 1.4rem',
                     background: 'transparent',
                     fontSize: '0.875rem',
                     textShadow: 'none',
+                    textAlign: 'left',
+                    fontFamily:
+                      'var(--slide-font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                    fontVariantLigatures: 'none',
+                    fontFeatureSettings: '"liga" 0, "calt" 0',
                   }}
-                  codeTagProps={{ className: 'slide-code-block-inner' }}
+                  codeTagProps={{
+                    className: 'slide-code-block-inner',
+                    style: {
+                      fontFamily:
+                        'var(--slide-font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                      fontVariantLigatures: 'none',
+                      fontFeatureSettings: '"liga" 0, "calt" 0',
+                    },
+                  }}
                 >
                   {codeString}
                 </SyntaxHighlighter>
@@ -183,6 +214,17 @@ export function SlideMarkdownBody({ markdown }: { markdown: string }) {
             {children}
           </em>
         ),
+        div: ({ className, children, ...rest }) => {
+          if (className === 'slide-embed-line-chart')
+            return <SlideLineChartEmbed data={lineChartData} lineChartArea={lineChartArea} />;
+          if (className === 'slide-embed-bar-chart')
+            return <SlideBarChartEmbed data={barChartData} stacked={barChartStacked === true} />;
+          return (
+            <div {...rest} className={className}>
+              {children}
+            </div>
+          );
+        },
       }}
     >
       {markdown}
@@ -190,13 +232,31 @@ export function SlideMarkdownBody({ markdown }: { markdown: string }) {
   );
 }
 
-function ColumnGrid({ cells }: { cells: string[] }) {
+function ColumnGrid({
+  cells,
+  lineChartData,
+  barChartData,
+  barChartStacked,
+  lineChartArea,
+}: {
+  cells: string[];
+  lineChartData?: SlideChartRow[];
+  barChartData?: SlideChartRow[];
+  barChartStacked?: boolean;
+  lineChartArea?: boolean;
+}) {
   const n = Math.min(4, Math.max(1, cells.length));
   return (
     <div className={`slide-columns slide-columns--${n} slide-columns--ruled`}>
       {cells.map((cell, i) => (
         <div key={i} className="slide-columns__cell">
-          <SlideMarkdownBody markdown={cell} />
+          <SlideMarkdownBody
+            markdown={cell}
+            lineChartData={lineChartData}
+            barChartData={barChartData}
+            barChartStacked={barChartStacked}
+            lineChartArea={lineChartArea}
+          />
         </div>
       ))}
     </div>
@@ -205,18 +265,46 @@ function ColumnGrid({ cells }: { cells: string[] }) {
 
 interface SlideMarkdownProps {
   markdown: string;
+  /** From slide YAML `lineChart:` — wired to `<div class="slide-embed-line-chart">` */
+  lineChartData?: SlideChartRow[];
+  /** From slide YAML `barChart:` — wired to `<div class="slide-embed-bar-chart">` */
+  barChartData?: SlideChartRow[];
+  /** From slide YAML `barChartStacked: true` */
+  barChartStacked?: boolean;
+  /** From slide YAML `lineChartArea:` / `area:` */
+  lineChartArea?: boolean;
 }
 
-export function SlideMarkdown({ markdown }: SlideMarkdownProps) {
+export function SlideMarkdown({
+  markdown,
+  lineChartData,
+  barChartData,
+  barChartStacked,
+  lineChartArea,
+}: SlideMarkdownProps) {
   const segments = useMemo(() => parseSlideSegments(markdown), [markdown]);
 
   return (
     <>
       {segments.map((seg, i) =>
         seg.type === 'text' ? (
-          <SlideMarkdownBody key={i} markdown={seg.content} />
+          <SlideMarkdownBody
+            key={i}
+            markdown={seg.content}
+            lineChartData={lineChartData}
+            barChartData={barChartData}
+            barChartStacked={barChartStacked}
+            lineChartArea={lineChartArea}
+          />
         ) : (
-          <ColumnGrid key={i} cells={seg.cells} />
+          <ColumnGrid
+            key={i}
+            cells={seg.cells}
+            lineChartData={lineChartData}
+            barChartData={barChartData}
+            barChartStacked={barChartStacked}
+            lineChartArea={lineChartArea}
+          />
         ),
       )}
     </>

@@ -1,8 +1,8 @@
 ---
 theme: default
+title: Tables
+subtitle: GitHub Flavored Markdown
 ---
-
-# Tables (GitHub Flavored Markdown)
 
 | Feature        | Status | Notes              |
 | -------------- | ------ | ------------------ |

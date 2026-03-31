@@ -1,14 +1,13 @@
 ---
 theme: default
+title: Text alignment
 ---
-
-# Text alignment
 
 ## Whole slide (frontmatter)
 
-Use `align: left`, `align: center`, or `align: right` in YAML **frontmatter** (same level as `theme:`) to align body text and headings.
+Use `align: left`, `align: center`, or `align: right` in YAML **frontmatter** (same level as `theme:`) to align body text and headings. The deck title uses `title:` / `subtitle:` (see the header above).
 
-This slide uses the default (body left, H1/H2 centered by theme).
+This slide omits `align`, so it follows the theme default (`align: left` on the default theme).
 
 ---
 

@@ -1,4 +1,6 @@
-# Working Area
+---
+title: Working Area
+---
 
 Toggle the working area to:
 

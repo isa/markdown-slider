@@ -1,4 +1,6 @@
-# Features
+---
+title: Features
+---
 
 - **Markdown-based** slides
 - Real-time **HTML preview**

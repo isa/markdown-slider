@@ -1,8 +1,7 @@
 ---
 theme: ocean
+title: Column layouts
 ---
-
-# Column layouts
 
 Use **`@@@columns`** blocks so each column is **full markdown** (images, tables, code, lists). Separate cells with **`@@cell`** on its own line; close with **`@@@`**.
 

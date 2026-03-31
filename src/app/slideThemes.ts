@@ -1,11 +1,24 @@
 import type { CSSProperties } from 'react';
 import matter from 'gray-matter';
+import { parseChartRowsFromFrontmatter, type SlideChartRow } from './slideChartData';
+
+export type { SlideChartRow } from './slideChartData';
 import { loadThemePresets, type ThemePreset } from './themeLoader';
 
 /** CSS variable keys applied to `.slide-root` */
 export type SlideCssVars = Record<string, string>;
 
 export type SlideColorMode = 'light' | 'dark';
+
+/** Visual layout for markdown slides (YAML `layout:`). Default: `content`. */
+export type SlideLayout = 'content' | 'cover' | 'infographic' | 'image';
+
+function parseSlideLayout(raw: unknown): SlideLayout {
+  if (raw === 'cover' || raw === 'infographic' || raw === 'image' || raw === 'content') {
+    return raw;
+  }
+  return 'content';
+}
 
 export interface ResolvedSlideTheme {
   id: string;
@@ -107,15 +120,89 @@ export function parseSlideMarkdown(
   theme: ResolvedSlideTheme;
   title?: string;
   subtitle?: string;
+  layout: SlideLayout;
+  /** Full-bleed cover background URL when `layout: cover` and `backgroundImage:` is set in frontmatter */
+  coverBackgroundImage?: string;
+  /** `layout: image` — optional CSS length for max-width of the figure (e.g. `80%`, `28rem`) */
+  imageLayoutMaxWidth?: string;
+  /** `layout: image` — optional CSS length for max-height of the image (e.g. `50vh`, `400px`) */
+  imageLayoutMaxHeight?: string;
+  /** `layout: image` — small caption below the image (e.g. "Figure 01 — …") */
+  imageCaption?: string;
+  /** YAML `lineChart:` rows for `<div class="slide-embed-line-chart">` (first column = X, next = series) */
+  lineChart?: SlideChartRow[];
+  /** YAML `barChart:` rows for `<div class="slide-embed-bar-chart">` */
+  barChart?: SlideChartRow[];
+  /** YAML `barChartStacked: true` — stacked bars instead of grouped */
+  barChartStacked?: boolean;
+  /** YAML `lineChartArea:` or `area:` — fill under lines at 10% of stroke; `false` = lines only */
+  lineChartArea?: boolean;
 } {
   const { data, content } = matter(raw);
   const d = data as Record<string, unknown>;
+  const layout = parseSlideLayout(d.layout);
   const colorMode: SlideColorMode = isDarkMode ? 'dark' : 'light';
   const theme = resolveSlideTheme(d, colorMode);
   const titleRaw = d.title;
   const subtitleRaw = d.subtitle;
   const title = typeof titleRaw === 'string' && titleRaw.trim() ? titleRaw.trim() : undefined;
-  const subtitle =
+  const subtitleParsed =
     typeof subtitleRaw === 'string' && subtitleRaw.trim() ? subtitleRaw.trim() : undefined;
-  return { body: content.trim(), theme, title, subtitle };
+  const subtitle =
+    layout === 'infographic' || layout === 'image' ? undefined : subtitleParsed;
+  const bgRaw = d.backgroundImage;
+  let coverBackgroundImage: string | undefined;
+  if (
+    layout === 'cover' &&
+    typeof bgRaw === 'string' &&
+    bgRaw.trim()
+  ) {
+    coverBackgroundImage = bgRaw.trim();
+  }
+
+  let imageLayoutMaxWidth: string | undefined;
+  let imageLayoutMaxHeight: string | undefined;
+  let imageCaption: string | undefined;
+  if (layout === 'image') {
+    const cap = d.caption;
+    if (typeof cap === 'string' && cap.trim()) {
+      imageCaption = cap.trim();
+    }
+    const iw = d.imageWidth;
+    if (typeof iw === 'string' && iw.trim()) {
+      imageLayoutMaxWidth = iw.trim();
+    }
+    const ih = d.imageHeight;
+    if (typeof ih === 'string' && ih.trim()) {
+      imageLayoutMaxHeight = ih.trim();
+    }
+  }
+
+  const lineChart = parseChartRowsFromFrontmatter(d.lineChart);
+  const barChart = parseChartRowsFromFrontmatter(d.barChart);
+  const bcs = d.barChartStacked;
+  let barChartStacked: boolean | undefined;
+  if (bcs === true || bcs === 'true' || bcs === 1) barChartStacked = true;
+  else if (bcs === false || bcs === 'false' || bcs === 0) barChartStacked = false;
+
+  const lca = d.lineChartArea ?? d.area;
+  let lineChartArea: boolean | undefined;
+  if (lca === true || lca === 'true' || lca === 1) lineChartArea = true;
+  else if (lca === false || lca === 'false' || lca === 0) lineChartArea = false;
+
+  return {
+    body: content.trim(),
+    theme,
+    title,
+    subtitle,
+    layout,
+    coverBackgroundImage,
+    imageLayoutMaxWidth,
+    imageLayoutMaxHeight,
+    imageCaption,
+    lineChart,
+    barChart,
+    barChartStacked,
+    lineChartArea,
+  };
 }

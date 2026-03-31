@@ -11,7 +11,7 @@ dark:
   css:
     --slide-font-heading: '"Segoe UI", system-ui, sans-serif'
     --slide-font-body: '"Segoe UI", system-ui, sans-serif'
-    --slide-font-mono: ui-monospace, monospace
+    --slide-font-mono: Menlo, ui-monospace, monospace
     --slide-font-size-h1: 3rem
     --slide-font-size-h2: 2.25rem
     --slide-font-size-h3: 1.65rem

@@ -1,10 +1,8 @@
 ---
 theme: serif-warm
+title: Typography theme
+subtitle: Headings use the preset’s serif stack
 ---
-
-# Typography theme
-
-## Headings use the preset’s serif stack
 
 Body copy uses **Palatino-style** text so you can compare heading versus body families in one slide.
 

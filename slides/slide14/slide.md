@@ -1,8 +1,7 @@
 ---
 theme: ocean
+title: Column layouts (continued)
 ---
-
-# Column layouts (continued)
 
 ## Three columns
 

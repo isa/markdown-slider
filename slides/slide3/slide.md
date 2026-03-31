@@ -1,4 +1,6 @@
-# Code Example
+---
+title: Code Example
+---
 
 Write code in your slides:
 

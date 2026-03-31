@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronLeft, ChevronRight, RotateCcw, Sun, Moon } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { SlidePresenter } from './components/SlidePresenter';
@@ -14,6 +14,9 @@ function App() {
   const [slidesData, setSlidesData] = useState<SlideData[]>(initialSlides);
   const [slideSourceOpen, setSlideSourceOpen] = useState(false);
   const [workingSourceOpen, setWorkingSourceOpen] = useState(false);
+  const [goToSlideOpen, setGoToSlideOpen] = useState(false);
+  const [goToSlideValue, setGoToSlideValue] = useState('');
+  const goToSlideInputRef = useRef<HTMLInputElement>(null);
 
   const totalSlides = slidesData.length;
   const currentSlideData = slidesData[currentSlide];
@@ -56,10 +59,48 @@ function App() {
     setIsDarkMode((prev) => !prev);
   }, []);
 
+  const closeGoToSlide = useCallback(() => {
+    setGoToSlideOpen(false);
+    setGoToSlideValue('');
+  }, []);
+
+  const submitGoToSlide = useCallback(() => {
+    const n = parseInt(goToSlideValue.trim(), 10);
+    if (Number.isNaN(n) || n < 1) {
+      closeGoToSlide();
+      return;
+    }
+    const idx = Math.min(n - 1, totalSlides - 1);
+    setCurrentSlide(Math.max(0, idx));
+    closeGoToSlide();
+  }, [goToSlideValue, totalSlides, closeGoToSlide]);
+
+  useEffect(() => {
+    if (!goToSlideOpen) return;
+    const id = requestAnimationFrame(() => goToSlideInputRef.current?.focus());
+    return () => cancelAnimationFrame(id);
+  }, [goToSlideOpen]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't capture shortcuts when typing in an editor
-      const tag = (e.target as HTMLElement)?.tagName;
+      const target = e.target as HTMLElement;
+      const tag = target?.tagName;
+      const isGoToInput = target === goToSlideInputRef.current;
+
+      if (goToSlideOpen) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          closeGoToSlide();
+          return;
+        }
+        if (!isGoToInput && (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === ' ')) {
+          e.preventDefault();
+          return;
+        }
+        if (isGoToInput) return;
+        return;
+      }
+
       if (tag === 'TEXTAREA' || tag === 'INPUT') return;
 
       if (e.key === 'ArrowRight' || e.key === ' ') {
@@ -74,11 +115,25 @@ function App() {
       } else if (e.key === 't' || e.key === 'T') {
         e.preventDefault();
         toggleTheme();
+      } else if (e.key === 'g' || e.key === 'G') {
+        if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+          e.preventDefault();
+          setGoToSlideValue('');
+          setGoToSlideOpen(true);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [nextSlide, prevSlide, toggleView, toggleTheme, hasWorkingArea]);
+  }, [
+    nextSlide,
+    prevSlide,
+    toggleView,
+    toggleTheme,
+    hasWorkingArea,
+    goToSlideOpen,
+    closeGoToSlide,
+  ]);
 
   // Determine glow color based on current state
   const getCardGlow = (): { className: string; style: React.CSSProperties } => {
@@ -104,6 +159,46 @@ function App() {
 
   return (
     <div className={`h-screen w-screen flex items-center justify-center p-8 transition-colors duration-300 ${isDarkMode ? 'bg-zinc-950' : 'bg-zinc-200'}`}>
+      {goToSlideOpen ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-[2px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="go-to-slide-label"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeGoToSlide();
+          }}
+        >
+          <div
+            className={`rounded-xl border px-5 py-4 shadow-xl min-w-[280px] ${isDarkMode ? 'bg-zinc-900 border-zinc-600' : 'bg-white border-zinc-300'}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <label id="go-to-slide-label" htmlFor="go-to-slide-input" className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-zinc-200' : 'text-zinc-800'}`}>
+              Go to slide (1–{totalSlides})
+            </label>
+            <input
+              id="go-to-slide-input"
+              ref={goToSlideInputRef}
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="e.g. 5"
+              value={goToSlideValue}
+              onChange={(e) => setGoToSlideValue(e.target.value.replace(/\D/g, ''))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  submitGoToSlide();
+                }
+              }}
+              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500/50 ${isDarkMode ? 'bg-zinc-950 border-zinc-600 text-white placeholder:text-zinc-500' : 'bg-zinc-50 border-zinc-300 text-zinc-900'}`}
+            />
+            <p className={`mt-2 text-[11px] ${isDarkMode ? 'text-zinc-500' : 'text-zinc-500'}`}>
+              Enter to go · Esc to cancel
+            </p>
+          </div>
+        </div>
+      ) : null}
       {/* Outer container - the "device frame" */}
       <div className={`w-full h-full rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.3)] border flex flex-col overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-zinc-900 border-zinc-800/60' : 'bg-white border-zinc-300'}`}>
         {/* Title bar */}
@@ -136,8 +231,8 @@ function App() {
           </div>
         </div>
 
-        {/* Inner content area - flips as a whole */}
-        <div className="flex-1 min-h-0 px-6 pb-6 pt-1" style={{ perspective: '1600px' }}>
+        {/* Inner content area - flips as a whole (perspective on flip layer only so slide nav stays flat / horizontal) */}
+        <div className="flex-1 min-h-0 px-6 pb-6 pt-1">
           <AnimatePresence mode="wait" initial={false}>
             {!showWorkingArea ? (
               <motion.div
@@ -147,7 +242,11 @@ function App() {
                 exit={{ rotateY: 90, opacity: 0 }}
                 transition={{ duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
                 className="w-full h-full flex items-center gap-8 md:gap-10"
-                style={{ transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }}
+                style={{
+                  transformPerspective: 1600,
+                  transformStyle: 'preserve-3d',
+                  backfaceVisibility: 'hidden',
+                }}
               >
                 {/* Previous arrow */}
                 <button
@@ -184,6 +283,7 @@ function App() {
                 transition={{ duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
                 className={`w-full h-full rounded-2xl border overflow-hidden ${isDarkMode ? cardGlow.className : 'border-zinc-200'}`}
                 style={{
+                  transformPerspective: 1600,
                   transformStyle: 'preserve-3d',
                   backfaceVisibility: 'hidden',
                   ...(isDarkMode ? cardGlow.style : { boxShadow: '0 4px 24px rgba(0,0,0,0.1)', transition: 'box-shadow 0.5s, border-color 0.5s' }),
@@ -197,7 +297,7 @@ function App() {
 
         {/* Footer dots */}
         <div className="shrink-0 pb-6 px-10 pt-1 flex items-center justify-between">
-          <span className={`text-[10px] ${isDarkMode ? 'text-zinc-600' : 'text-zinc-400'}`}>← → nav · F flip · T theme</span>
+          <span className={`text-[10px] ${isDarkMode ? 'text-zinc-600' : 'text-zinc-400'}`}>← → nav · G go to · F flip · T theme</span>
           <div className="flex items-center gap-3">
             <span className={`text-xs ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
               {currentSlide + 1} / {totalSlides}
