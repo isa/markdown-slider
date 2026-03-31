@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, RefObject } from 'react';
 import { animate, motion, useMotionValue, useMotionValueEvent, useTransform } from 'motion/react';
 import { getPath } from 'recharts/es6/shape/Curve';
@@ -270,7 +270,10 @@ type LineTooltipPayloadEntry = {
 
 type FormattedGraphicalItem = {
   item?: { props?: { dataKey?: string | number } };
-  props?: { points?: Array<{ x: number; y: number }> };
+  props?: {
+    points?: Array<{ x: number; y: number }>;
+    baseLine?: unknown;
+  };
 };
 
 type LineChartGeometrySnapshot = {
@@ -522,12 +525,12 @@ export type PieChartLegendPosition = 'left' | 'right' | 'bottom';
 /** YAML `lineChartEndMarker:` / `lineEndMarker:` — decoration at the last point of each series. */
 export type LineChartEndMarker = 'none' | 'arrow' | 'circle' | 'openCircle';
 
-const LINE_END_ARROW_LEN = 9;
-const LINE_END_ARROW_HALF_WIDTH = 4.5;
+const LINE_END_ARROW_LEN = 10;
+const LINE_END_ARROW_HALF_W = 4.5;
 const LINE_END_CIRCLE_R = 4.5;
 const LINE_END_OPEN_STROKE = 2;
-/** Extra path length to leave the stroke shy of the tip (caps/AA); avoids the line reading through the head. */
-const LINE_END_STROKE_NUDGE = 2;
+/** Extra path length gap between stroke end and marker base (small breathing room for anti-aliasing). */
+const LINE_END_STROKE_NUDGE = 0.5;
 
 /** Distance along the path / tangent to leave between stroke end and marker so the line doesn’t run through the head. */
 function lineEndMarkerStrokeInset(marker: LineChartEndMarker): number {
@@ -535,6 +538,58 @@ function lineEndMarkerStrokeInset(marker: LineChartEndMarker): number {
   if (marker === 'circle') return LINE_END_CIRCLE_R + LINE_END_STROKE_NUDGE;
   if (marker === 'openCircle') return LINE_END_CIRCLE_R + LINE_END_OPEN_STROKE / 2 + LINE_END_STROKE_NUDGE;
   return 0;
+}
+
+/** Clamp desired inset so a short path still has drawable length; pairs with linear drawLen = p * drawable. */
+function lineEndMarkerEffectiveStrokeInset(pathLen: number, marker: LineChartEndMarker): number {
+  const raw = lineEndMarkerStrokeInset(marker);
+  return Math.min(raw, Math.max(0, pathLen - 0.5));
+}
+
+/** Arrow head from tip T and base midpoint B (same frame as stroke end on the path — not a straight offset from T). */
+function lineEndArrowPolygonFromChord(
+  tx: number,
+  ty: number,
+  bx: number,
+  by: number,
+  halfWidth: number,
+): string {
+  const dx = tx - bx;
+  const dy = ty - by;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6) return `${tx},${ty} ${tx},${ty} ${tx},${ty}`;
+  const ux = dx / len;
+  const uy = dy / len;
+  const px = -uy;
+  const py = ux;
+  const b1x = bx + px * halfWidth;
+  const b1y = by + py * halfWidth;
+  const b2x = bx - px * halfWidth;
+  const b2y = by - py * halfWidth;
+  return `${tx},${ty} ${b1x},${b1y} ${b2x},${b2y}`;
+}
+
+/** Walk backward along a polyline by `dist` px from the last point (for arrow base aligned with stroke inset). */
+function polylinePointAtDistanceFromEnd(
+  points: Array<{ x: number; y: number }>,
+  dist: number,
+): { x: number; y: number } | null {
+  if (!points.length) return null;
+  if (points.length < 2 || dist <= 0) return points[points.length - 1]!;
+  let remaining = dist;
+  for (let i = points.length - 1; i > 0; i--) {
+    const a = points[i]!;
+    const b = points[i - 1]!;
+    const segLen = Math.hypot(a.x - b.x, a.y - b.y);
+    if (remaining <= segLen) {
+      return {
+        x: a.x + (remaining / segLen) * (b.x - a.x),
+        y: a.y + (remaining / segLen) * (b.y - a.y),
+      };
+    }
+    remaining -= segLen;
+  }
+  return points[0]!;
 }
 
 function filterLinePoints(
@@ -550,39 +605,14 @@ function filterLinePoints(
   return out;
 }
 
-/** Interpolate along the polyline (same x-order as Recharts category line) for Area clip sync. */
-function markerPointOnPolyline(
-  points: Array<{ x: number; y: number }>,
-  xClip: number,
-): { x: number; y: number; angle: number } | null {
-  if (points.length < 2) return null;
-  const p0 = points[0];
-  const pN = points[points.length - 1];
-  const xMin = Math.min(p0.x, pN.x);
-  const xMax = Math.max(p0.x, pN.x);
-  const x = Math.min(Math.max(xClip, xMin), xMax);
-  for (let i = 0; i < points.length - 1; i++) {
-    const a = points[i];
-    const b = points[i + 1];
-    const minX = Math.min(a.x, b.x);
-    const maxX = Math.max(a.x, b.x);
-    if (x >= minX && x <= maxX) {
-      const t = a.x === b.x ? 0 : (x - a.x) / (b.x - a.x);
-      const y = a.y + t * (b.y - a.y);
-      const angle = Math.atan2(b.y - a.y, b.x - a.x);
-      return { x, y, angle };
-    }
-  }
-  const a = points[points.length - 2];
-  const b = points[points.length - 1];
-  return { x: b.x, y: b.y, angle: Math.atan2(b.y - a.y, b.x - a.x) };
-}
-
 /**
  * (cx, cy) = path end (last data point): arrow tip / circle center sit here so the series stroke
  * does not continue past the marker toward the dot. The animated stroke is shortened by
  * lineEndMarkerStrokeInset so it meets the base / inner edge; this glyph is not shifted backward
  * along the path (that left a gap on the tail and let the native stroke run tip → dot).
+ *
+ * `arrowBase` = stroke end on the path (arc-length–consistent). Circles ignore it; arrows use it
+ * instead of a straight tangent step (which drifts on curves — circles stay symmetric so they look fine).
  */
 function LineEndMarkerGlyph({
   marker,
@@ -590,12 +620,14 @@ function LineEndMarkerGlyph({
   cx,
   cy,
   angle,
+  arrowBase,
 }: {
   marker: LineChartEndMarker;
   stroke: string;
   cx: number;
   cy: number;
   angle: number;
+  arrowBase?: { x: number; y: number };
 }) {
   const ux = Math.cos(angle);
   const uy = Math.sin(angle);
@@ -616,62 +648,28 @@ function LineEndMarkerGlyph({
     );
   }
   if (marker === 'arrow') {
+    if (arrowBase) {
+      return (
+        <polygon
+          points={lineEndArrowPolygonFromChord(cx, cy, arrowBase.x, arrowBase.y, LINE_END_ARROW_HALF_W)}
+          fill={stroke}
+        />
+      );
+    }
     const bx = cx - ux * LINE_END_ARROW_LEN;
     const by = cy - uy * LINE_END_ARROW_LEN;
     const px = -uy;
     const py = ux;
-    const b1x = bx + px * LINE_END_ARROW_HALF_WIDTH;
-    const b1y = by + py * LINE_END_ARROW_HALF_WIDTH;
-    const b2x = bx - px * LINE_END_ARROW_HALF_WIDTH;
-    const b2y = by - py * LINE_END_ARROW_HALF_WIDTH;
+    const b1x = bx + px * LINE_END_ARROW_HALF_W;
+    const b1y = by + py * LINE_END_ARROW_HALF_W;
+    const b2x = bx - px * LINE_END_ARROW_HALF_W;
+    const b2y = by - py * LINE_END_ARROW_HALF_W;
     return <polygon points={`${cx},${cy} ${b1x},${b1y} ${b2x},${b2y}`} fill={stroke} />;
   }
   return null;
 }
 
-/** Area: marker follows horizontal clip (same t as Recharts Area animation). */
-function AnimatedAreaEndMarker({
-  points,
-  stroke,
-  animationBeginMs,
-  animationDurationMs,
-  endMarker,
-}: {
-  points: Array<{ x: number; y: number }>;
-  stroke: string;
-  animationBeginMs: number;
-  animationDurationMs: number;
-  endMarker: LineChartEndMarker;
-}) {
-  const p0 = points[0];
-  const pN = points[points.length - 1];
-  const progress = useMotionValue(0);
-  const [tip, setTip] = useState<{ cx: number; cy: number; angle: number } | null>(null);
-
-  useMotionValueEvent(progress, 'change', (t) => {
-    const xClip = p0.x + t * (pN.x - p0.x);
-    const hit = markerPointOnPolyline(points, xClip);
-    if (hit) setTip({ cx: hit.x, cy: hit.y, angle: hit.angle });
-    else setTip(null);
-  });
-
-  useEffect(() => {
-    progress.set(0);
-    const hit0 = markerPointOnPolyline(points, p0.x);
-    if (hit0) setTip({ cx: hit0.x, cy: hit0.y, angle: hit0.angle });
-    const ctrl = animate(progress, 1, {
-      duration: animationDurationMs / 1000,
-      delay: animationBeginMs / 1000,
-      ease: 'easeOut',
-    });
-    return () => ctrl.stop();
-  }, [progress, animationBeginMs, animationDurationMs, points.length, p0.x, p0.y, pN.x, pN.y]);
-
-  if (endMarker === 'none') return null;
-  return tip ? <LineEndMarkerGlyph marker={endMarker} stroke={stroke} cx={tip.cx} cy={tip.cy} angle={tip.angle} /> : null;
-}
-
-/** Line-only: stroke + marker share one progress (matches Recharts stroke-dash line animation). */
+/** Stroke + marker share one progress (stroke-dasharray animation with end marker). */
 function AnimatedLineStrokeWithEndMarker({
   points,
   stroke,
@@ -700,20 +698,25 @@ function AnimatedLineStrokeWithEndMarker({
   const pathRef = useRef<SVGPathElement | null>(null);
   const [pathLen, setPathLen] = useState(0);
   const progress = useMotionValue(0);
-  const [tip, setTip] = useState<{ cx: number; cy: number; angle: number } | null>(null);
+  const [tip, setTip] = useState<{ cx: number; cy: number; angle: number; along: number } | null>(null);
 
-  const strokeInset = lineEndMarkerStrokeInset(endMarker);
   const dashStyle = useTransform(progress, (p) => {
     if (pathLen <= 0) return '0 0';
-    const cur = p * pathLen;
-    const drawLen = Math.max(0, cur - strokeInset);
+    const effectiveInset = lineEndMarkerEffectiveStrokeInset(pathLen, endMarker);
+    const front = p * pathLen;
+    const drawLen = Math.max(0, front - effectiveInset);
     return `${drawLen}px ${pathLen}px`;
   });
 
   useLayoutEffect(() => {
-    const el = pathRef.current;
-    if (!el || !pathD) {
+    if (!pathD) {
       setPathLen(0);
+      return;
+    }
+    const el = pathRef.current;
+    // Do not zero pathLen when `el` is briefly null during reconcile (e.g. tooltip hover); that
+    // restarts the dash animation at progress 0 and makes strokes disappear until it completes.
+    if (!el) {
       return;
     }
     try {
@@ -729,11 +732,11 @@ function AnimatedLineStrokeWithEndMarker({
       setTip(null);
       return;
     }
-    const cur = p * pathLen;
-    const pt = el.getPointAtLength(cur);
-    const pt0 = el.getPointAtLength(Math.max(0, cur - 2));
+    const front = p * pathLen;
+    const pt = el.getPointAtLength(front);
+    const pt0 = el.getPointAtLength(Math.max(0, front - 2));
     const angle = Math.atan2(pt.y - pt0.y, pt.x - pt0.x);
-    setTip({ cx: pt.x, cy: pt.y, angle });
+    setTip({ cx: pt.x, cy: pt.y, angle, along: front });
   });
 
   useEffect(() => {
@@ -749,6 +752,18 @@ function AnimatedLineStrokeWithEndMarker({
 
   if (!pathD) return null;
 
+  let arrowBaseLine: { x: number; y: number } | undefined;
+  if (endMarker === 'arrow' && tip && pathRef.current && pathLen > 0) {
+    try {
+      const effectiveInset = lineEndMarkerEffectiveStrokeInset(pathLen, endMarker);
+      const strokeEndAlong = Math.max(0, tip.along - effectiveInset);
+      const bp = pathRef.current.getPointAtLength(strokeEndAlong);
+      arrowBaseLine = { x: bp.x, y: bp.y };
+    } catch {
+      arrowBaseLine = undefined;
+    }
+  }
+
   return (
     <g className="slide-chart-line-series--with-end-marker">
       <motion.path
@@ -757,12 +772,19 @@ function AnimatedLineStrokeWithEndMarker({
         fill="none"
         stroke={stroke}
         strokeWidth={strokeWidth}
-        strokeLinecap="round"
+        strokeLinecap="butt"
         strokeLinejoin="round"
         style={{ strokeDasharray: dashStyle }}
       />
       {tip && endMarker !== 'none' ? (
-        <LineEndMarkerGlyph marker={endMarker} stroke={stroke} cx={tip.cx} cy={tip.cy} angle={tip.angle} />
+        <LineEndMarkerGlyph
+          marker={endMarker}
+          stroke={stroke}
+          cx={tip.cx}
+          cy={tip.cy}
+          angle={tip.angle}
+          arrowBase={arrowBaseLine}
+        />
       ) : null}
     </g>
   );
@@ -775,41 +797,61 @@ function findFormattedItemForKey(
   return items?.find((g) => String(g.item?.props?.dataKey) === String(key));
 }
 
+/** Build an SVG area-fill path: line path → bottom edge → close. */
+function areaFillPath(
+  points: Array<{ x: number; y: number }>,
+  bottomY: number,
+): string {
+  if (points.length < 2) return '';
+  const linePath = getPath({ points, type: 'monotone', layout: 'horizontal', connectNulls: false });
+  const last = points[points.length - 1];
+  const first = points[0];
+  return `${linePath} L ${last.x},${bottomY} L ${first.x},${bottomY} Z`;
+}
+
 function SlideLineChartAnimatedEndMarkers({
   formattedGraphicalItems,
   seriesKeys,
   fillUnderLines,
   endMarker,
+  offset,
 }: {
   formattedGraphicalItems?: FormattedGraphicalItem[];
   seriesKeys: string[];
   fillUnderLines: boolean;
   endMarker: LineChartEndMarker;
+  offset?: { top?: number; height?: number };
 }) {
   if (endMarker === 'none') return null;
 
+  const bottomY = (offset?.top ?? 0) + (offset?.height ?? 0);
+
   return (
     <g className="slide-chart-line-end-markers" aria-hidden pointerEvents="none">
+      {fillUnderLines
+        ? seriesKeys.map((key, i) => {
+            const gi = findFormattedItemForKey(formattedGraphicalItems, key);
+            const pts = filterLinePoints(gi?.props?.points as Array<{ x?: number; y?: number }> | undefined);
+            if (pts.length < 2) return null;
+            const stroke = chartSeriesColor(i);
+            return (
+              <path
+                key={`${key}-fill`}
+                d={areaFillPath(pts, bottomY)}
+                fill={stroke}
+                fillOpacity={LINE_AREA_FILL_OPACITY}
+              />
+            );
+          })
+        : null}
       {seriesKeys.map((key, i) => {
         const gi = findFormattedItemForKey(formattedGraphicalItems, key);
         const pts = filterLinePoints(gi?.props?.points as Array<{ x?: number; y?: number }> | undefined);
         if (pts.length < 2) return null;
         const stroke = chartSeriesColor(i);
         const strokeW = 3.5 + (i % 2) * 0.65;
-        const beginMs = fillUnderLines ? PATH_ANIM_MS * (0.12 * i) : PATH_ANIM_MS * (0.35 + i * 0.12);
+        const beginMs = PATH_ANIM_MS * (0.35 + i * 0.12);
 
-        if (fillUnderLines) {
-          return (
-            <AnimatedAreaEndMarker
-              key={key}
-              points={pts}
-              stroke={stroke}
-              animationBeginMs={beginMs}
-              animationDurationMs={PATH_ANIM_MS}
-              endMarker={endMarker}
-            />
-          );
-        }
         return (
           <AnimatedLineStrokeWithEndMarker
             key={key}
@@ -839,6 +881,7 @@ export function SlideLineChartEmbed({
   lineChartEndMarker = 'none',
 }: SlideLineChartEmbedProps) {
   const fillUnderLines = lineChartArea !== false;
+  const hasEndMarker = lineChartEndMarker !== 'none';
 
   const spec = useMemo(() => {
     const rows = data?.length ? data : DEFAULT_LINE;
@@ -871,6 +914,18 @@ export function SlideLineChartEmbed({
   }, []);
 
   const lineChartGeometryRef = useRef<LineChartGeometrySnapshot | null>(null);
+  const renderLineEndMarkers = useCallback(
+    (props: Record<string, unknown>) => (
+      <SlideLineChartAnimatedEndMarkers
+        endMarker={lineChartEndMarker}
+        fillUnderLines={fillUnderLines}
+        formattedGraphicalItems={props.formattedGraphicalItems as FormattedGraphicalItem[] | undefined}
+        seriesKeys={seriesKeys}
+        offset={props.offset as { top?: number; height?: number } | undefined}
+      />
+    ),
+    [fillUnderLines, lineChartEndMarker, seriesKeys],
+  );
 
   return (
     <div
@@ -920,60 +975,65 @@ export function SlideLineChartEmbed({
               )}
               cursor={{ stroke: 'color-mix(in srgb, var(--slide-accent) 50%, transparent)' }}
             />
-            {fillUnderLines
-              ? seriesKeys.map((key, i) => {
-                  const stroke = chartSeriesColor(i);
-                  return (
-                    <Area
-                      key={key}
-                      type="monotone"
-                      dataKey={key}
-                      name={labelForKey(key)}
-                      stroke={stroke}
-                      strokeWidth={3.5 + (i % 2) * 0.65}
-                      fill={stroke}
-                      fillOpacity={LINE_AREA_FILL_OPACITY}
-                      dot={{ r: 3.75, fill: stroke, strokeWidth: 0 }}
-                      activeDot={false}
-                      isAnimationActive
-                      animationDuration={PATH_ANIM_MS}
-                      animationBegin={PATH_ANIM_MS * (0.12 * i)}
-                      animationEasing="ease-out"
-                    />
-                  );
-                })
-              : seriesKeys.map((key, j) => {
-                  const stroke = chartSeriesColor(j);
-                  const hideNativeStroke = lineChartEndMarker !== 'none';
-                  return (
-                    <Line
-                      key={key}
-                      type="monotone"
-                      dataKey={key}
-                      name={labelForKey(key)}
-                      stroke={hideNativeStroke ? 'transparent' : stroke}
-                      strokeWidth={hideNativeStroke ? 0 : 3.5 + (j % 2) * 0.65}
-                      dot={
-                        hideNativeStroke ? false : { r: 3.75, fill: stroke, strokeWidth: 0 }
-                      }
-                      activeDot={false}
-                      isAnimationActive={!hideNativeStroke}
-                      animationDuration={PATH_ANIM_MS}
-                      animationBegin={PATH_ANIM_MS * (0.35 + j * 0.12)}
-                      animationEasing="ease-out"
-                    />
-                  );
-                })}
-            {lineChartEndMarker !== 'none' ? (
-              <Customized
-                component={(props: Record<string, unknown>) => (
-                  <SlideLineChartAnimatedEndMarkers
-                    endMarker={lineChartEndMarker}
-                    fillUnderLines={fillUnderLines}
-                    formattedGraphicalItems={props.formattedGraphicalItems as FormattedGraphicalItem[] | undefined}
-                    seriesKeys={seriesKeys}
+            {hasEndMarker
+              ? /* Lines only — strokes + arrows drawn by Customized; area fill drawn manually */
+                seriesKeys.map((key) => (
+                  <Line
+                    key={key}
+                    type="monotone"
+                    dataKey={key}
+                    name={labelForKey(key)}
+                    stroke="transparent"
+                    strokeWidth={0}
+                    dot={false}
+                    activeDot={false}
+                    isAnimationActive={false}
                   />
-                )}
+                ))
+              : fillUnderLines
+                ? seriesKeys.map((key, i) => {
+                    const stroke = chartSeriesColor(i);
+                    return (
+                      <Area
+                        key={key}
+                        type="monotone"
+                        dataKey={key}
+                        name={labelForKey(key)}
+                        stroke={stroke}
+                        strokeWidth={3.5 + (i % 2) * 0.65}
+                        fill={stroke}
+                        fillOpacity={LINE_AREA_FILL_OPACITY}
+                        dot={{ r: 3.75, fill: stroke, strokeWidth: 0 }}
+                        activeDot={false}
+                        isAnimationActive
+                        animationDuration={PATH_ANIM_MS}
+                        animationBegin={PATH_ANIM_MS * (0.12 * i)}
+                        animationEasing="ease-out"
+                      />
+                    );
+                  })
+                : seriesKeys.map((key, j) => {
+                    const stroke = chartSeriesColor(j);
+                    return (
+                      <Line
+                        key={key}
+                        type="monotone"
+                        dataKey={key}
+                        name={labelForKey(key)}
+                        stroke={stroke}
+                        strokeWidth={3.5 + (j % 2) * 0.65}
+                        dot={{ r: 3.75, fill: stroke, strokeWidth: 0 }}
+                        activeDot={false}
+                        isAnimationActive
+                        animationDuration={PATH_ANIM_MS}
+                        animationBegin={PATH_ANIM_MS * (0.35 + j * 0.12)}
+                        animationEasing="ease-out"
+                      />
+                    );
+                  })}
+            {hasEndMarker ? (
+              <Customized
+                component={renderLineEndMarkers}
               />
             ) : null}
             <Customized
