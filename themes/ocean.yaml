@@ -1,0 +1,70 @@
+# Ocean — cyan / sky on deep blue
+# Use in slides: theme: ocean
+
+id: ocean
+name: Ocean
+description: Cool blues and cyan accents; Segoe UI stack.
+
+align: left
+
+dark:
+  css:
+    --slide-font-heading: '"Segoe UI", system-ui, sans-serif'
+    --slide-font-body: '"Segoe UI", system-ui, sans-serif'
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 3rem
+    --slide-font-size-h2: 2.25rem
+    --slide-font-size-h3: 1.65rem
+    --slide-font-size-body: 1.2rem
+    --slide-line-height-body: "1.6"
+    --slide-text: "#e0f2fe"
+    --slide-text-muted: "#7dd3fc"
+    --slide-heading-color: "#ffffff"
+    --slide-heading-h1-color: "#ffffff"
+    --slide-heading-h2-color: "#e0f2fe"
+    --slide-heading-h3-color: "#7dd3fc"
+    --slide-accent: "#22d3ee"
+    --slide-bg: transparent
+    --slide-bullet-color: "#38bdf8"
+    --slide-list-spacing: 0.65rem
+    --slide-image-radius: 1rem
+    --slide-image-shadow: 0 20px 50px rgb(8 47 73 / 0.5)
+    --slide-image-max-width: min(100%, 38rem)
+    --slide-code-bg: "#0c4a6e"
+    --slide-code-text: "#a5f3fc"
+    --slide-blockquote-border: "#22d3ee"
+    --slide-table-border: "#0369a1"
+    --slide-table-header-bg: "#075985"
+    --slide-column-gap: 1.25rem
+    --slide-entrance: none
+
+light:
+  css:
+    --slide-font-heading: '"Segoe UI", system-ui, sans-serif'
+    --slide-font-body: '"Segoe UI", system-ui, sans-serif'
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 3rem
+    --slide-font-size-h2: 2.25rem
+    --slide-font-size-h3: 1.65rem
+    --slide-font-size-body: 1.2rem
+    --slide-line-height-body: "1.6"
+    --slide-text: "#0c4a6e"
+    --slide-text-muted: "#0369a1"
+    --slide-heading-color: "#0a1628"
+    --slide-heading-h1-color: "#0c4a6e"
+    --slide-heading-h2-color: "#0a1628"
+    --slide-heading-h3-color: "#0369a1"
+    --slide-accent: "#0891b2"
+    --slide-bg: transparent
+    --slide-bullet-color: "#0284c7"
+    --slide-list-spacing: 0.65rem
+    --slide-image-radius: 1rem
+    --slide-image-shadow: 0 16px 40px rgb(8 47 73 / 0.12)
+    --slide-image-max-width: min(100%, 38rem)
+    --slide-code-bg: "#e0f2fe"
+    --slide-code-text: "#0e7490"
+    --slide-blockquote-border: "#0891b2"
+    --slide-table-border: "#bae6fd"
+    --slide-table-header-bg: "#f0f9ff"
+    --slide-column-gap: 1.25rem
+    --slide-entrance: none

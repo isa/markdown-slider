@@ -103,11 +103,11 @@ function App() {
   const cardGlow = getCardGlow();
 
   return (
-    <div className={`h-screen w-screen flex items-center justify-center p-6 transition-colors duration-300 ${isDarkMode ? 'bg-zinc-950' : 'bg-zinc-200'}`}>
+    <div className={`h-screen w-screen flex items-center justify-center p-8 transition-colors duration-300 ${isDarkMode ? 'bg-zinc-950' : 'bg-zinc-200'}`}>
       {/* Outer container - the "device frame" */}
       <div className={`w-full h-full rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.3)] border flex flex-col overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-zinc-900 border-zinc-800/60' : 'bg-white border-zinc-300'}`}>
         {/* Title bar */}
-        <div className="shrink-0 px-8 py-4 flex items-center justify-between">
+        <div className="shrink-0 px-10 py-5 flex items-center justify-between">
           <div className="w-20" />
           <div className="text-center">
             <h1 className={`text-2xl ${isDarkMode ? 'text-white' : 'text-zinc-800'}`} style={{ fontFamily: 'Georgia, serif' }}>
@@ -137,23 +137,23 @@ function App() {
         </div>
 
         {/* Inner content area - flips as a whole */}
-        <div className="flex-1 min-h-0 px-4 pb-4" style={{ perspective: '1500px' }}>
-          <AnimatePresence mode="wait">
+        <div className="flex-1 min-h-0 px-6 pb-6 pt-1" style={{ perspective: '1600px' }}>
+          <AnimatePresence mode="wait" initial={false}>
             {!showWorkingArea ? (
               <motion.div
                 key="slide"
                 initial={{ rotateY: -90, opacity: 0 }}
                 animate={{ rotateY: 0, opacity: 1 }}
                 exit={{ rotateY: 90, opacity: 0 }}
-                transition={{ duration: 0.25, ease: 'easeInOut' }}
-                className="w-full h-full flex items-center gap-3"
+                transition={{ duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
+                className="w-full h-full flex items-center gap-8 md:gap-10"
                 style={{ transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }}
               >
                 {/* Previous arrow */}
                 <button
                   onClick={prevSlide}
                   disabled={currentSlide === 0}
-                  className={`shrink-0 w-10 h-10 flex items-center justify-center rounded-lg border transition-colors outline-none disabled:opacity-20 disabled:pointer-events-none ${isDarkMode ? 'border-zinc-700 bg-zinc-800/50 hover:bg-zinc-700 text-white' : 'border-zinc-300 bg-zinc-100 hover:bg-zinc-200 text-zinc-700'}`}
+                  className={`relative z-10 shrink-0 w-10 h-10 flex items-center justify-center rounded-lg border transition-colors outline-none disabled:opacity-20 disabled:pointer-events-none ${isDarkMode ? 'border-zinc-700 bg-zinc-800/95 hover:bg-zinc-700 text-white shadow-sm' : 'border-zinc-300 bg-zinc-100 hover:bg-zinc-200 text-zinc-700'}`}
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
@@ -170,7 +170,7 @@ function App() {
                 <button
                   onClick={nextSlide}
                   disabled={currentSlide === totalSlides - 1}
-                  className={`shrink-0 w-10 h-10 flex items-center justify-center rounded-lg border transition-colors outline-none disabled:opacity-20 disabled:pointer-events-none ${isDarkMode ? 'border-zinc-700 bg-zinc-800/50 hover:bg-zinc-700 text-white' : 'border-zinc-300 bg-zinc-100 hover:bg-zinc-200 text-zinc-700'}`}
+                  className={`relative z-10 shrink-0 w-10 h-10 flex items-center justify-center rounded-lg border transition-colors outline-none disabled:opacity-20 disabled:pointer-events-none ${isDarkMode ? 'border-zinc-700 bg-zinc-800/95 hover:bg-zinc-700 text-white shadow-sm' : 'border-zinc-300 bg-zinc-100 hover:bg-zinc-200 text-zinc-700'}`}
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
@@ -181,9 +181,13 @@ function App() {
                 initial={{ rotateY: -90, opacity: 0 }}
                 animate={{ rotateY: 0, opacity: 1 }}
                 exit={{ rotateY: 90, opacity: 0 }}
-                transition={{ duration: 0.25, ease: 'easeInOut' }}
+                transition={{ duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
                 className={`w-full h-full rounded-2xl border overflow-hidden ${isDarkMode ? cardGlow.className : 'border-zinc-200'}`}
-                style={{ transformStyle: 'preserve-3d', backfaceVisibility: 'hidden', ...(isDarkMode ? cardGlow.style : { boxShadow: '0 4px 24px rgba(0,0,0,0.1)', transition: 'box-shadow 0.5s, border-color 0.5s' }) }}
+                style={{
+                  transformStyle: 'preserve-3d',
+                  backfaceVisibility: 'hidden',
+                  ...(isDarkMode ? cardGlow.style : { boxShadow: '0 4px 24px rgba(0,0,0,0.1)', transition: 'box-shadow 0.5s, border-color 0.5s' }),
+                }}
               >
                 <WorkingArea htmlContent={currentSlideData?.workingArea?.content} workingAreaType={currentSlideData?.workingArea?.type} onContentChange={(content) => updateWorkingAreaContent(currentSlide, content)} onSourceToggle={setWorkingSourceOpen} />
               </motion.div>
@@ -192,7 +196,7 @@ function App() {
         </div>
 
         {/* Footer dots */}
-        <div className="shrink-0 pb-4 px-8 flex items-center justify-between">
+        <div className="shrink-0 pb-6 px-10 pt-1 flex items-center justify-between">
           <span className={`text-[10px] ${isDarkMode ? 'text-zinc-600' : 'text-zinc-400'}`}>← → nav · F flip · T theme</span>
           <div className="flex items-center gap-3">
             <span className={`text-xs ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>

@@ -1,4 +1,6 @@
-# Welcome to Markdown Slides
-## A Modern Presentation Tool
+---
+title: Welcome to Markdown Slides
+subtitle: A modern presentation tool
+---
 
-Create beautiful presentations with markdown
+Create beautiful presentations with markdown.

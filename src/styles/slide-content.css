@@ -1,0 +1,631 @@
+/* Slide theme: typography, colors, lists, images, tables — driven by CSS variables on .slide-root */
+
+.slide-root {
+  width: 100%;
+  max-width: 56rem;
+  margin-inline: auto;
+  background: var(--slide-bg);
+  border-radius: 0.75rem;
+  padding: 1.5rem 2rem;
+  box-sizing: border-box;
+  max-height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Fill presenter when YAML title is present: pin deck header top-left, body scrolls below */
+.slide-root.slide-root--deck-header {
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+}
+
+/* Frontmatter title / subtitle (theme variables) */
+.slide-deck-header {
+  flex-shrink: 0;
+  width: 100%;
+  text-align: left;
+  align-self: flex-start;
+}
+
+.slide-prose.slide-align--center .slide-deck-header,
+.slide-prose.slide-align--right .slide-deck-header {
+  text-align: left;
+  align-self: flex-start;
+}
+
+.slide-deck-header__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+}
+
+.slide-deck-header__title {
+  font-family: var(--slide-font-heading);
+  font-size: var(--slide-font-size-h2);
+  font-weight: 700;
+  color: var(--slide-heading-color);
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+}
+
+.slide-deck-header__vsep {
+  width: 1px;
+  align-self: stretch;
+  min-height: 1.25em;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--slide-text-muted) 75%, transparent);
+}
+
+.slide-deck-header__subtitle {
+  font-family: var(--slide-font-heading);
+  font-size: calc(var(--slide-font-size-body) * 1.05);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--slide-text-muted);
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+}
+
+.slide-deck-header__rule {
+  height: 3px;
+  margin-top: 0.75rem;
+  width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--slide-accent) 85%, var(--slide-heading-color) 15%) 0%,
+    color-mix(in srgb, var(--slide-accent) 35%, transparent) 100%
+  );
+  opacity: 0.92;
+}
+
+.slide-deck-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.slide-deck-body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.slide-prose {
+  font-family: var(--slide-font-body);
+  font-size: var(--slide-font-size-body);
+  line-height: var(--slide-line-height-body);
+  color: var(--slide-text);
+  text-align: left;
+}
+
+/* Whole-slide alignment (frontmatter: align: left | center | right) */
+.slide-prose.slide-align--left {
+  text-align: left;
+}
+.slide-prose.slide-align--left .slide-heading--1,
+.slide-prose.slide-align--left .slide-heading--2,
+.slide-prose.slide-align--left .slide-heading--3 {
+  text-align: left;
+}
+
+.slide-prose.slide-align--center {
+  text-align: center;
+}
+.slide-prose.slide-align--center .slide-heading--1,
+.slide-prose.slide-align--center .slide-heading--2,
+.slide-prose.slide-align--center .slide-heading--3 {
+  text-align: center;
+}
+.slide-prose.slide-align--center .slide-ul,
+.slide-prose.slide-align--center .slide-ol {
+  text-align: left;
+  display: inline-block;
+}
+
+.slide-prose.slide-align--right {
+  text-align: right;
+}
+.slide-prose.slide-align--right .slide-heading--1,
+.slide-prose.slide-align--right .slide-heading--2,
+.slide-prose.slide-align--right .slide-heading--3 {
+  text-align: right;
+}
+
+/* Per-block alignment (sanitized div.slide-align--* or div.align--*) */
+.slide-prose .slide-align--left,
+.slide-prose .align--left {
+  text-align: left;
+}
+.slide-prose .slide-align--center,
+.slide-prose .align--center {
+  text-align: center;
+}
+.slide-prose .slide-align--right,
+.slide-prose .align--right {
+  text-align: right;
+}
+
+.slide-prose .slide-align--left .slide-heading--1,
+.slide-prose .slide-align--left .slide-heading--2,
+.slide-prose .slide-align--left .slide-heading--3,
+.slide-prose .align--left .slide-heading--1,
+.slide-prose .align--left .slide-heading--2,
+.slide-prose .align--left .slide-heading--3 {
+  text-align: left;
+}
+
+.slide-prose .slide-align--center .slide-heading--1,
+.slide-prose .slide-align--center .slide-heading--2,
+.slide-prose .slide-align--center .slide-heading--3,
+.slide-prose .align--center .slide-heading--1,
+.slide-prose .align--center .slide-heading--2,
+.slide-prose .align--center .slide-heading--3 {
+  text-align: center;
+}
+
+.slide-prose .slide-align--right .slide-heading--1,
+.slide-prose .slide-align--right .slide-heading--2,
+.slide-prose .slide-align--right .slide-heading--3,
+.slide-prose .align--right .slide-heading--1,
+.slide-prose .align--right .slide-heading--2,
+.slide-prose .align--right .slide-heading--3 {
+  text-align: right;
+}
+
+.slide-prose .slide-align--center .slide-img,
+.slide-prose .align--center .slide-img {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.slide-prose .slide-align--center .slide-table-wrap,
+.slide-prose .align--center .slide-table-wrap {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 100%;
+}
+
+.slide-accent {
+  color: var(--slide-accent);
+  font-weight: 600;
+}
+
+/* Headings follow slide alignment (inherit) and use theme size / weight / color per level */
+.slide-heading {
+  font-family: var(--slide-font-heading);
+  line-height: 1.15;
+  text-align: inherit;
+  letter-spacing: -0.02em;
+}
+
+.slide-heading--1 {
+  font-size: var(--slide-font-size-h1);
+  font-weight: var(--slide-heading-weight-1, 700);
+  color: var(--slide-heading-h1-color, var(--slide-heading-color));
+  margin-top: 0;
+  margin-bottom: 1.75rem;
+}
+
+.slide-heading--2 {
+  font-size: var(--slide-font-size-h2);
+  font-weight: var(--slide-heading-weight-2, 600);
+  color: var(--slide-heading-h2-color, var(--slide-heading-color));
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.slide-heading--2:first-child {
+  margin-top: 0;
+}
+
+.slide-heading--3 {
+  font-size: var(--slide-font-size-h3);
+  font-weight: var(--slide-heading-weight-3, 600);
+  color: var(
+    --slide-heading-h3-color,
+    color-mix(in srgb, var(--slide-heading-color) 82%, var(--slide-text-muted) 18%)
+  );
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.slide-heading--3:first-child {
+  margin-top: 0;
+}
+
+.slide-p {
+  margin-bottom: 1rem;
+  color: var(--slide-text);
+}
+
+.slide-ul,
+.slide-ol {
+  font-size: var(--slide-font-size-body);
+  margin-bottom: 1.5rem;
+  padding-left: 1.5rem;
+}
+
+.slide-ul {
+  list-style-type: disc;
+}
+
+.slide-ol {
+  list-style-type: decimal;
+}
+
+.slide-ul .slide-ul,
+.slide-ol .slide-ol {
+  margin-bottom: 0.5rem;
+}
+
+.slide-li {
+  margin-bottom: var(--slide-list-spacing);
+  padding-left: 0.25rem;
+}
+
+.slide-li::marker {
+  color: var(--slide-bullet-color);
+}
+
+.slide-img {
+  display: block;
+  max-width: var(--slide-image-max-width);
+  width: 100%;
+  height: auto;
+  margin: 1rem auto 1.75rem;
+  border-radius: var(--slide-image-radius);
+  box-shadow: var(--slide-image-shadow);
+  object-fit: cover;
+}
+
+.slide-p + .slide-img {
+  margin-top: 1.25rem;
+}
+
+.slide-img + .slide-p,
+.slide-img + .slide-ul,
+.slide-img + .slide-ol {
+  margin-top: 1.25rem;
+}
+
+.slide-pre {
+  font-family: var(--slide-font-mono);
+  padding: 1.25rem 1.5rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 2rem 0;
+  background: var(--slide-code-bg);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.slide-pre::-webkit-scrollbar {
+  display: none;
+  height: 0;
+}
+
+/* Extra separation from prose / headings / lists */
+.slide-p + .slide-pre,
+.slide-blockquote + .slide-pre,
+.slide-ul + .slide-pre,
+.slide-ol + .slide-pre,
+.slide-table-wrap + .slide-pre,
+.slide-heading--1 + .slide-pre,
+.slide-heading--2 + .slide-pre,
+.slide-heading--3 + .slide-pre {
+  margin-top: 2.25rem;
+}
+
+.slide-pre + .slide-p,
+.slide-pre + .slide-ul,
+.slide-pre + .slide-ol,
+.slide-pre + .slide-blockquote,
+.slide-pre + .slide-heading--1,
+.slide-pre + .slide-heading--2,
+.slide-pre + .slide-heading--3 {
+  margin-top: 2rem;
+}
+
+.slide-pre--highlight {
+  padding: 0;
+  background: var(--slide-code-bg);
+}
+
+.slide-pre--highlight .slide-code-block-inner {
+  font-family: var(--slide-font-mono);
+}
+
+/* Prism / syntax-highlighter token styles often add text-shadow; remove for theme fidelity */
+.slide-pre--highlight span,
+.slide-pre--highlight .token,
+.slide-code-inline-highlight span,
+.slide-code-inline-highlight .token {
+  text-shadow: none !important;
+}
+
+.slide-code-block {
+  font-size: 0.875rem;
+  background: transparent;
+  color: var(--slide-code-text);
+}
+
+.slide-code-inline {
+  font-family: var(--slide-font-mono);
+  font-size: 0.9em;
+  padding: 0.2em 0.45em;
+  border-radius: 0.3rem;
+  background: var(--slide-code-bg);
+  color: var(--slide-code-text);
+}
+
+.slide-code-inline-highlight {
+  font-family: var(--slide-font-mono);
+}
+
+.slide-blockquote {
+  border-left: 4px solid var(--slide-blockquote-border);
+  padding-left: 1rem;
+  margin: 1rem 0;
+  font-style: italic;
+  color: var(--slide-text-muted);
+}
+
+/* Rounded outer edge: clip the table; single border model avoids corner “square” glitches */
+.slide-table-wrap {
+  margin: 1rem 0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid var(--slide-table-border);
+}
+
+.slide-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  background: var(--slide-table-header-bg);
+}
+
+.slide-th,
+.slide-td {
+  border: 1px solid var(--slide-table-border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.slide-th {
+  background: var(--slide-table-header-bg);
+  color: var(--slide-heading-color);
+  font-weight: 600;
+}
+
+.slide-td {
+  background: color-mix(in srgb, var(--slide-bg, #18181b) 94%, var(--slide-table-header-bg));
+}
+
+.slide-a {
+  color: var(--slide-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.slide-a:hover {
+  opacity: 0.9;
+}
+
+.slide-hr {
+  border: none;
+  border-top: 1px solid var(--slide-table-border);
+  margin: 1.5rem 0;
+}
+
+.slide-strong {
+  font-weight: 600;
+  color: var(--slide-heading-color);
+}
+
+.slide-em {
+  font-style: italic;
+}
+
+/* Column layouts (HTML or @@@columns blocks) */
+.slide-columns {
+  display: grid;
+  margin: 1rem 0;
+  width: 100%;
+  gap: 0;
+  column-gap: 0;
+}
+
+.slide-columns--ruled {
+  gap: 0;
+}
+
+.slide-columns--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.slide-columns--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.slide-columns--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.slide-columns__cell {
+  min-width: 0;
+  padding: 0 1rem;
+}
+
+.slide-columns--ruled .slide-columns__cell {
+  border-left: 1px solid color-mix(in srgb, var(--slide-table-border) 45%, transparent);
+}
+
+.slide-columns--ruled .slide-columns__cell:first-child {
+  border-left: none;
+  padding-left: 0;
+}
+
+.slide-columns--ruled .slide-columns__cell:last-child {
+  padding-right: 0;
+}
+
+/* Raw HTML inside column / animate blocks (markdown does not parse inside HTML blocks) */
+.slide-columns__cell h3,
+.slide-animate h3 {
+  font-family: var(--slide-font-heading);
+  font-size: var(--slide-font-size-h3);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--slide-heading-color);
+  margin-bottom: 0.5rem;
+  text-align: left;
+}
+
+.slide-columns__cell p,
+.slide-animate p {
+  font-family: var(--slide-font-body);
+  font-size: var(--slide-font-size-body);
+  line-height: var(--slide-line-height-body);
+  color: var(--slide-text);
+  margin: 0 0 0.5rem;
+}
+
+.slide-columns__cell strong {
+  font-weight: 600;
+  color: var(--slide-heading-color);
+}
+
+@media (max-width: 640px) {
+  .slide-columns--2,
+  .slide-columns--3,
+  .slide-columns--4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Optional per-block animation (sanitized div) */
+.slide-animate--fade-up {
+  animation: slide-fade-up 0.55s ease forwards;
+}
+
+.slide-animate--fade-in {
+  animation: slide-fade-in 0.5s ease forwards;
+}
+
+@keyframes slide-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Staggered entrance (theme: stagger or slide.entrance) — optional deck header + body blocks */
+.slide-root--stagger.slide-prose > .slide-deck-header {
+  animation: slide-fade-up 0.45s ease forwards;
+  opacity: 0;
+  animation-delay: 0.05s;
+}
+
+.slide-root--stagger.slide-prose > .slide-deck-body > * {
+  animation: slide-fade-up 0.45s ease forwards;
+  opacity: 0;
+}
+
+.slide-root--stagger.slide-prose > .slide-deck-body > *:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.slide-root--stagger.slide-prose > .slide-deck-body > *:nth-child(2) {
+  animation-delay: 0.12s;
+}
+.slide-root--stagger.slide-prose > .slide-deck-body > *:nth-child(3) {
+  animation-delay: 0.19s;
+}
+.slide-root--stagger.slide-prose > .slide-deck-body > *:nth-child(4) {
+  animation-delay: 0.26s;
+}
+.slide-root--stagger.slide-prose > .slide-deck-body > *:nth-child(5) {
+  animation-delay: 0.33s;
+}
+.slide-root--stagger.slide-prose > .slide-deck-body > *:nth-child(6) {
+  animation-delay: 0.4s;
+}
+.slide-root--stagger.slide-prose > .slide-deck-body > *:nth-child(7) {
+  animation-delay: 0.47s;
+}
+.slide-root--stagger.slide-prose > .slide-deck-body > *:nth-child(8) {
+  animation-delay: 0.54s;
+}
+.slide-root--stagger.slide-prose > .slide-deck-body > *:nth-child(9) {
+  animation-delay: 0.61s;
+}
+.slide-root--stagger.slide-prose > .slide-deck-body > *:nth-child(10) {
+  animation-delay: 0.68s;
+}
+
+/* When a deck header is present, shift body block delays by one step */
+.slide-root--stagger.slide-prose:has(.slide-deck-header) > .slide-deck-body > *:nth-child(1) {
+  animation-delay: 0.12s;
+}
+.slide-root--stagger.slide-prose:has(.slide-deck-header) > .slide-deck-body > *:nth-child(2) {
+  animation-delay: 0.19s;
+}
+.slide-root--stagger.slide-prose:has(.slide-deck-header) > .slide-deck-body > *:nth-child(3) {
+  animation-delay: 0.26s;
+}
+.slide-root--stagger.slide-prose:has(.slide-deck-header) > .slide-deck-body > *:nth-child(4) {
+  animation-delay: 0.33s;
+}
+.slide-root--stagger.slide-prose:has(.slide-deck-header) > .slide-deck-body > *:nth-child(5) {
+  animation-delay: 0.4s;
+}
+.slide-root--stagger.slide-prose:has(.slide-deck-header) > .slide-deck-body > *:nth-child(6) {
+  animation-delay: 0.47s;
+}
+.slide-root--stagger.slide-prose:has(.slide-deck-header) > .slide-deck-body > *:nth-child(7) {
+  animation-delay: 0.54s;
+}
+.slide-root--stagger.slide-prose:has(.slide-deck-header) > .slide-deck-body > *:nth-child(8) {
+  animation-delay: 0.61s;
+}
+.slide-root--stagger.slide-prose:has(.slide-deck-header) > .slide-deck-body > *:nth-child(9) {
+  animation-delay: 0.68s;
+}
+.slide-root--stagger.slide-prose:has(.slide-deck-header) > .slide-deck-body > *:nth-child(10) {
+  animation-delay: 0.75s;
+}
+
+.slide-root--stagger.slide-prose .slide-deck-body .slide-table-wrap,
+.slide-root--stagger.slide-prose .slide-deck-body .slide-columns {
+  animation: slide-fade-up 0.45s ease forwards;
+  opacity: 0;
+  animation-delay: 0.2s;
+}
+
+.slide-root--stagger.slide-prose:has(.slide-deck-header) .slide-deck-body .slide-table-wrap,
+.slide-root--stagger.slide-prose:has(.slide-deck-header) .slide-deck-body .slide-columns {
+  animation-delay: 0.27s;
+}

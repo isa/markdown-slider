@@ -1,0 +1,72 @@
+# Stagger — purple accent + staggered block entrance
+# Use in slides: theme: stagger
+
+id: stagger
+name: Stagger
+description: Violet accent; each body block can fade in with a stagger delay.
+
+align: left
+
+rootClassName: slide-root--stagger
+
+dark:
+  css:
+    --slide-font-heading: ui-sans-serif, system-ui, sans-serif
+    --slide-font-body: ui-sans-serif, system-ui, sans-serif
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 2.75rem
+    --slide-font-size-h2: 2rem
+    --slide-font-size-h3: 1.5rem
+    --slide-font-size-body: 1.2rem
+    --slide-line-height-body: "1.6"
+    --slide-text: "#e4e4e7"
+    --slide-text-muted: "#a1a1aa"
+    --slide-heading-color: "#f4f4f5"
+    --slide-heading-h1-color: "#ffffff"
+    --slide-heading-h2-color: "#f4f4f5"
+    --slide-heading-h3-color: "#c4b5fd"
+    --slide-accent: "#a78bfa"
+    --slide-bg: transparent
+    --slide-bullet-color: "#c4b5fd"
+    --slide-list-spacing: 0.5rem
+    --slide-image-radius: 0.75rem
+    --slide-image-shadow: 0 20px 40px rgb(0 0 0 / 0.35)
+    --slide-image-max-width: min(100%, 36rem)
+    --slide-code-bg: "#27272a"
+    --slide-code-text: "#86efac"
+    --slide-blockquote-border: "#a78bfa"
+    --slide-table-border: "#3f3f46"
+    --slide-table-header-bg: "#27272a"
+    --slide-column-gap: 1rem
+    --slide-entrance: stagger
+
+light:
+  css:
+    --slide-font-heading: ui-sans-serif, system-ui, sans-serif
+    --slide-font-body: ui-sans-serif, system-ui, sans-serif
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 2.75rem
+    --slide-font-size-h2: 2rem
+    --slide-font-size-h3: 1.5rem
+    --slide-font-size-body: 1.2rem
+    --slide-line-height-body: "1.6"
+    --slide-text: "#3f3f46"
+    --slide-text-muted: "#71717a"
+    --slide-heading-color: "#18181b"
+    --slide-heading-h1-color: "#0a0a0a"
+    --slide-heading-h2-color: "#18181b"
+    --slide-heading-h3-color: "#52525b"
+    --slide-accent: "#7c3aed"
+    --slide-bg: transparent
+    --slide-bullet-color: "#8b5cf6"
+    --slide-list-spacing: 0.5rem
+    --slide-image-radius: 0.75rem
+    --slide-image-shadow: 0 16px 36px rgb(0 0 0 / 0.08)
+    --slide-image-max-width: min(100%, 36rem)
+    --slide-code-bg: "#f4f4f5"
+    --slide-code-text: "#15803d"
+    --slide-blockquote-border: "#7c3aed"
+    --slide-table-border: "#e4e4e7"
+    --slide-table-header-bg: "#fafafa"
+    --slide-column-gap: 1rem
+    --slide-entrance: stagger

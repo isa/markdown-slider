@@ -14,7 +14,12 @@ export default defineConfig({
     alias: {
       // Alias @ to the src directory
       '@': path.resolve(__dirname, './src'),
+      buffer: 'buffer',
     },
+  },
+
+  optimizeDeps: {
+    include: ['buffer'],
   },
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.

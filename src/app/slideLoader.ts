@@ -53,6 +53,7 @@ export function loadSlides(): SlideData[] {
     const htmlPath = `/slides/${key}/slide.html`;
     const hasMd = mdPath in slideMdFiles;
 
+    // Full raw markdown (including YAML frontmatter) for editing and theme parsing
     const content = hasMd ? slideMdFiles[mdPath] : (slideHtmlFiles[htmlPath] ?? '');
     const type = hasMd ? 'md' : 'html';
 
