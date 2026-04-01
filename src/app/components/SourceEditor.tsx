@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { Code, X } from 'lucide-react';
+import { Code, Loader2, Save, X } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface SourceEditorProps {
@@ -8,9 +8,22 @@ interface SourceEditorProps {
   onClose: () => void;
   language: 'md' | 'html';
   isDarkMode?: boolean;
+  /** When set, shows a Save control (e.g. persist to disk in dev). */
+  onSave?: () => void | Promise<void>;
+  saveDisabled?: boolean;
+  saving?: boolean;
 }
 
-export function SourceEditor({ value, onChange, onClose, language, isDarkMode = false }: SourceEditorProps) {
+export function SourceEditor({
+  value,
+  onChange,
+  onClose,
+  language,
+  isDarkMode = false,
+  onSave,
+  saveDisabled = false,
+  saving = false,
+}: SourceEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -63,14 +76,45 @@ export function SourceEditor({ value, onChange, onClose, language, isDarkMode = 
             {language === 'md' ? 'Markdown' : 'HTML'}
           </span>
         </div>
+        <div className="flex items-center gap-1.5">
+          {onSave ? (
+            <button
+              type="button"
+              onClick={() => void onSave()}
+              disabled={saveDisabled || saving}
+              title={saving ? 'Saving…' : 'Save to disk'}
+              aria-label={saving ? 'Saving' : 'Save to disk'}
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-colors outline-none ${
+                saveDisabled || saving
+                  ? isDarkMode
+                    ? 'cursor-not-allowed border-zinc-700/90 bg-zinc-900/80 text-zinc-500'
+                    : 'cursor-not-allowed border-zinc-200 bg-zinc-100 text-zinc-400'
+                  : isDarkMode
+                    ? 'border-sky-500/40 bg-sky-500/12 text-sky-200 shadow-sm hover:border-sky-400/50 hover:bg-sky-500/22 hover:text-sky-100'
+                    : 'border-sky-200/95 bg-sky-50 text-sky-800 shadow-sm hover:border-sky-300/90 hover:bg-sky-100/95 hover:text-sky-950'
+              }`}
+            >
+              {saving ? (
+                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
+              ) : (
+                <Save className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+              )}
+            </button>
+          ) : null}
         <button
+          type="button"
           onClick={onClose}
-          className={`w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-700 transition-colors ${
-            isDarkMode ? 'text-zinc-400 hover:text-white hover:bg-zinc-700' : 'text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200'
-          }`}
+          title="Close"
+          aria-label="Close"
+          className={
+            isDarkMode
+              ? 'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-zinc-600/80 bg-zinc-900/90 text-zinc-400 shadow-sm transition-colors hover:border-zinc-500 hover:bg-zinc-600 hover:text-white'
+              : 'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-zinc-300/90 bg-white/90 text-zinc-500 shadow-sm transition-colors hover:border-zinc-400 hover:bg-zinc-100 hover:text-zinc-900'
+          }
         >
-          <X className="w-3 h-3" />
+          <X className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
         </button>
+        </div>
       </div>
 
       {/* Textarea */}

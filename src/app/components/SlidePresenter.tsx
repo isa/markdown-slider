@@ -15,6 +15,10 @@ interface SlidePresenterProps {
   presentationMode?: boolean;
   onContentChange?: (content: string) => void;
   onSourceToggle?: (open: boolean) => void;
+  /** Dev server: persist slide source to disk. */
+  persistenceEnabled?: boolean;
+  onSaveSlide?: () => void | Promise<void>;
+  saveSlidePending?: boolean;
 }
 
 /** Wraps slide header + body so the block can be vertically centered in the slide when shorter than the viewport. */
@@ -31,6 +35,9 @@ export function SlidePresenter({
   presentationMode = false,
   onContentChange,
   onSourceToggle,
+  persistenceEnabled = false,
+  onSaveSlide,
+  saveSlidePending = false,
 }: SlidePresenterProps) {
   const [showSource, setShowSource] = useState(false);
   const prevSlideRef = useRef(currentSlide);
@@ -363,6 +370,8 @@ export function SlidePresenter({
             }}
             language={slideType}
             isDarkMode={isDarkMode}
+            onSave={persistenceEnabled && onSaveSlide ? onSaveSlide : undefined}
+            saving={saveSlidePending}
           />
         )}
       </AnimatePresence>

@@ -74,7 +74,9 @@ tags:
 
 `subtitle` is the small line under the deck title in the app header (deck mode). `defaultPalette` and `defaultFont` set the slide look when a slide omits `palette` / `font` (and optional legacy `theme:`). You can still use **`defaultTheme`** alone as a shorthand for a named bundle; see [`themes/README.md`](themes/README.md).
 
-While viewing a deck, use **Edit deck metadata** (pencil in the header) to change title, subtitle, and related fields; those edits are stored in the browser. Use **Copy YAML** there to paste into `metadata.md` if you want the repo file to match.
+While viewing a deck with **`bun run dev`**, use **Edit deck metadata** (pencil in the header) and click **Save** to write `decks/<id>/metadata.md` on disk. **Copy YAML** is still available if you need the snippet outside the dev server.
+
+With the dev server running, **Save** in the slide or working-area source panel writes the current `slide.md` / `slide.html` (and working-area files) to the repo. **Add Slide** / **Add Working Area** create folders and files under `decks/` (no production build / static preview).
 
 ### Working area
 
@@ -147,11 +149,11 @@ Deck id collisions are auto-resolved by suffixing (`-2`, `-3`, ...).
 - **Navigation**: side arrows, footer dots, and keyboard shortcuts (see footer hint).
 - **Theme toggle (T)**: sun/moon switches light vs dark mode for the shell.
 - **Flip (F)**: switches to working area when available.
-- **Add Slide** / **Add Working Area**: footer buttons (session-only); they use the shared shadcn `Button` styling with the same outline treatment as other chrome controls.
-- **Per-slide source (E)**: code button edits raw `slide.md` / `slide.html` in-memory.
+- **Add Slide** / **Add Working Area**: footer buttons; with the dev server they create slide folders / `working-area/` on disk (disabled without dev API).
+- **Per-slide source (E)**: code button edits raw `slide.md` / `slide.html`; use **Save** in the source panel to persist (dev server).
 - **Presentation (P)**: fullscreen slide view; **Esc** exits.
 - **Go to slide (G)**: jump by slide number.
-- **Edit deck metadata**: pencil in the header opens the dialog (browser-stored overrides; see **Deck metadata** above).
+- **Edit deck metadata**: pencil in the header opens the dialog; **Save** writes `metadata.md` when using `bun run dev`, otherwise overrides stay in the browser until you use **Copy YAML**.
 
 ---
 

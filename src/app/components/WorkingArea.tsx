@@ -16,6 +16,10 @@ interface WorkingAreaProps {
   presentationMode?: boolean;
   onContentChange?: (content: string) => void;
   onSourceToggle?: (open: boolean) => void;
+  /** Dev server: persist working-area source to disk. */
+  persistenceEnabled?: boolean;
+  onSaveWorkingArea?: () => void | Promise<void>;
+  saveWorkingAreaPending?: boolean;
 }
 
 /** Empty preview: theme via `data-theme` + CSS variables (see injectIframeTheme). */
@@ -47,6 +51,9 @@ export function WorkingArea({
   presentationMode = false,
   onContentChange,
   onSourceToggle,
+  persistenceEnabled = false,
+  onSaveWorkingArea,
+  saveWorkingAreaPending = false,
 }: WorkingAreaProps) {
   const [mode, setMode] = useState<WorkingMode>('content');
   const [showSource, setShowSource] = useState(false);
@@ -191,6 +198,8 @@ export function WorkingArea({
               }}
               language={contentType}
               isDarkMode={isDarkMode}
+              onSave={persistenceEnabled && onSaveWorkingArea ? onSaveWorkingArea : undefined}
+              saving={saveWorkingAreaPending}
             />
           )}
         </AnimatePresence>

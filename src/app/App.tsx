@@ -1,6 +1,20 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, RotateCcw, Sun, Moon, Plus, FolderOpen, Copy, Check, Presentation, Pencil } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
+  Sun,
+  Moon,
+  Plus,
+  FolderOpen,
+  Copy,
+  Check,
+  Presentation,
+  Pencil,
+  Library,
+} from 'lucide-react';
 import { stringify as yamlStringify } from 'yaml';
+import { toast } from 'sonner';
 import { AnimatePresence, motion } from 'motion/react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -8,6 +22,16 @@ import { SlidePresenter } from './components/SlidePresenter';
 import { WorkingArea } from './components/WorkingArea';
 import { PresentationInkLayer } from './components/PresentationInkLayer';
 import { loadDecks, getDefaultDeckId, SlideData, DeckMeta } from './slideLoader';
+import {
+  pingDeckDevApi,
+  saveDeckFile,
+  saveDeckMetadataToDisk,
+  createSlideAfterDeck,
+  createWorkingAreaOnDisk,
+  relativePathForSlideFile,
+  relativePathForWorkingAreaFile,
+  fetchDeckFromDevApi,
+} from './deckPersistence';
 import { getRegisteredFontIds, getRegisteredPaletteIds, getRegisteredThemeIds, type DeckSlideThemeDefaults } from './slideThemes';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
@@ -64,14 +88,14 @@ function buildMetadataYamlSnippet(meta: DeckMeta): string {
   return `---\n${body}\n---\n`;
 }
 
-const decksCatalog = loadDecks();
+const INITIAL_DECKS = loadDecks();
 const paletteOptions = getRegisteredPaletteIds();
 const fontOptions = getRegisteredFontIds();
 const themeOptions = getRegisteredThemeIds();
 const deckFromUrl = new URLSearchParams(window.location.search).get('deck');
 const initialDeckId =
-  (deckFromUrl && decksCatalog.some((d) => d.id === deckFromUrl) && deckFromUrl) ||
-  getDefaultDeckId(decksCatalog);
+  (deckFromUrl && INITIAL_DECKS.some((d) => d.id === deckFromUrl) && deckFromUrl) ||
+  getDefaultDeckId(INITIAL_DECKS);
 
 function getFullscreenElement(): Element | null {
   const doc = document as Document & {
@@ -111,6 +135,12 @@ async function requestFullscreenDom(el: Element): Promise<void> {
 }
 
 function App() {
+  const [decksCatalog, setDecksCatalog] = useState(INITIAL_DECKS);
+  const [devPersistenceEnabled, setDevPersistenceEnabled] = useState(false);
+  const [slideSavePending, setSlideSavePending] = useState(false);
+  const [workingSavePending, setWorkingSavePending] = useState(false);
+  const [metaSavePending, setMetaSavePending] = useState(false);
+
   const [selectedDeckId, setSelectedDeckId] = useState<string | null>(initialDeckId);
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -142,6 +172,10 @@ function App() {
   const [presentationMode, setPresentationMode] = useState(false);
   const goToSlideInputRef = useRef<HTMLInputElement>(null);
   const presentationContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    void pingDeckDevApi().then(setDevPersistenceEnabled);
+  }, []);
 
   const activeDeck = useMemo(
     () => decksCatalog.find((deck) => deck.id === activeDeckId) ?? null,
@@ -207,8 +241,45 @@ function App() {
     setDeckMetaDialogOpen(true);
   }, [activeDeck, deckMetaOverrides]);
 
-  const saveDeckMetaDialog = useCallback(() => {
+  const saveDeckMetaDialog = useCallback(async () => {
     if (!activeDeck) return;
+
+    const mergedBase = mergeDeckMeta(activeDeck.meta, deckMetaOverrides[activeDeck.id]);
+    const meta: DeckMeta = {
+      ...mergedBase,
+      id: activeDeck.id,
+      title: deckMetaForm.title.trim() || activeDeck.meta.title,
+      subtitle: deckMetaForm.subtitle.trim(),
+      author: deckMetaForm.author.trim() || '',
+      date: deckMetaForm.date.trim() || '',
+      description: deckMetaForm.description.trim() || '',
+      defaultTheme: deckMetaForm.defaultTheme.trim() || '',
+      defaultPalette: deckMetaForm.defaultPalette.trim() || '',
+      defaultFont: deckMetaForm.defaultFont.trim() || '',
+    };
+
+    if (devPersistenceEnabled) {
+      setMetaSavePending(true);
+      try {
+        const deck = await saveDeckMetadataToDisk(activeDeck.id, meta);
+        if (deck) {
+          setDecksCatalog((prev) => prev.map((d) => (d.id === deck.id ? deck : d)));
+        }
+        setDeckMetaOverrides((prev) => {
+          const next = { ...prev };
+          delete next[activeDeck.id];
+          return next;
+        });
+        setDeckMetaDialogOpen(false);
+        toast.success('Saved to metadata.md');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Could not save metadata');
+      } finally {
+        setMetaSavePending(false);
+      }
+      return;
+    }
+
     setDeckMetaOverrides((prev) => ({
       ...prev,
       [activeDeck.id]: {
@@ -223,7 +294,7 @@ function App() {
       },
     }));
     setDeckMetaDialogOpen(false);
-  }, [activeDeck, deckMetaForm]);
+  }, [activeDeck, deckMetaForm, deckMetaOverrides, devPersistenceEnabled]);
 
   const resetDeckMetaToFile = useCallback(() => {
     if (!activeDeck) return;
@@ -278,7 +349,7 @@ function App() {
     const nextUrl = new URL(window.location.href);
     nextUrl.searchParams.set('deck', deck.id);
     window.history.replaceState({}, '', nextUrl.toString());
-  }, []);
+  }, [decksCatalog]);
 
   useEffect(() => {
     if (activeDeckId || !initialDeckId) return;
@@ -296,6 +367,55 @@ function App() {
       i === slideIndex && s.workingArea ? { ...s, workingArea: { ...s.workingArea, content } } : s
     ));
   }, []);
+
+  const handleSaveSlideSource = useCallback(async () => {
+    if (!activeDeckId || !currentSlideData || !devPersistenceEnabled) return;
+    setSlideSavePending(true);
+    try {
+      const rel = relativePathForSlideFile(currentSlideData.id, currentSlideData.type);
+      await saveDeckFile(activeDeckId, rel, currentSlideData.content);
+      const deck = await fetchDeckFromDevApi(activeDeckId);
+      if (deck) {
+        setDecksCatalog((prev) => prev.map((d) => (d.id === deck.id ? deck : d)));
+        setSlidesData(
+          deck.slides.map((slide) => ({
+            ...slide,
+            workingArea: slide.workingArea ? { ...slide.workingArea } : undefined,
+          })),
+        );
+      }
+      toast.success('Slide saved');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save slide');
+    } finally {
+      setSlideSavePending(false);
+    }
+  }, [activeDeckId, currentSlideData, devPersistenceEnabled]);
+
+  const handleSaveWorkingAreaSource = useCallback(async () => {
+    if (!activeDeckId || !currentSlideData?.workingArea || !devPersistenceEnabled) return;
+    setWorkingSavePending(true);
+    try {
+      const wa = currentSlideData.workingArea;
+      const rel = relativePathForWorkingAreaFile(currentSlideData.id, wa.type);
+      await saveDeckFile(activeDeckId, rel, wa.content);
+      const deck = await fetchDeckFromDevApi(activeDeckId);
+      if (deck) {
+        setDecksCatalog((prev) => prev.map((d) => (d.id === deck.id ? deck : d)));
+        setSlidesData(
+          deck.slides.map((slide) => ({
+            ...slide,
+            workingArea: slide.workingArea ? { ...slide.workingArea } : undefined,
+          })),
+        );
+      }
+      toast.success('Working area saved');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save working area');
+    } finally {
+      setWorkingSavePending(false);
+    }
+  }, [activeDeckId, currentSlideData, devPersistenceEnabled]);
 
   // Auto-flip back to slide view when navigating to a slide without a working area
   useEffect(() => {
@@ -324,42 +444,59 @@ function App() {
     setIsDarkMode((prev) => !prev);
   }, []);
 
-  const addSlideAfterCurrent = useCallback(() => {
-    if (!activeDeckId) return;
-    const insertionIndex = currentSlide + 1;
-    const nextSlideId = `slide${String(insertionIndex + 1).padStart(2, '0')}`;
-    const newSlide: SlideData = {
-      index: insertionIndex,
-      id: nextSlideId,
-      deckId: activeDeckId,
-      content: `---\ntitle: New Slide\n---\n\nAdd your content here.\n`,
-      type: 'md',
-    };
-    setSlidesData((prev) => {
-      const next = [...prev];
-      next.splice(insertionIndex, 0, newSlide);
-      return next.map((slide, idx) => ({ ...slide, index: idx }));
-    });
-    setCurrentSlide(insertionIndex);
-    setShowWorkingArea(false);
-  }, [activeDeckId, currentSlide]);
-
-  const addWorkingAreaToCurrent = useCallback(() => {
+  const addSlideAfterCurrent = useCallback(async () => {
     if (!activeDeckId || totalSlides < 1) return;
-    setSlidesData((prev) =>
-      prev.map((slide, idx) => {
-        if (idx !== currentSlide || slide.workingArea) return slide;
-        return {
+    const afterSlide = slidesData[currentSlide];
+    if (!afterSlide) return;
+
+    if (!devPersistenceEnabled) {
+      toast.error('Adding slides to disk requires the Vite dev server (bun run dev).');
+      return;
+    }
+
+    try {
+      const deck = await createSlideAfterDeck(activeDeckId, afterSlide.id);
+      setDecksCatalog((prev) => prev.map((d) => (d.id === deck.id ? deck : d)));
+      const newIndex = currentSlide + 1;
+      setSlidesData(
+        deck.slides.map((slide) => ({
           ...slide,
-          workingArea: {
-            type: 'md',
-            content: `# Working Area\n\nUse this space for notes, drafts, or demo snippets.\n`,
-          },
-        };
-      }),
-    );
-    setShowWorkingArea(true);
-  }, [activeDeckId, totalSlides, currentSlide]);
+          workingArea: slide.workingArea ? { ...slide.workingArea } : undefined,
+        })),
+      );
+      setCurrentSlide(Math.min(newIndex, deck.slides.length - 1));
+      setShowWorkingArea(false);
+      toast.success('New slide added on disk');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not add slide');
+    }
+  }, [activeDeckId, currentSlide, devPersistenceEnabled, slidesData, totalSlides]);
+
+  const addWorkingAreaToCurrent = useCallback(async () => {
+    if (!activeDeckId || totalSlides < 1) return;
+    const slide = slidesData[currentSlide];
+    if (!slide || slide.workingArea) return;
+
+    if (!devPersistenceEnabled) {
+      toast.error('Adding a working area on disk requires the Vite dev server (bun run dev).');
+      return;
+    }
+
+    try {
+      const deck = await createWorkingAreaOnDisk(activeDeckId, slide.id);
+      setDecksCatalog((prev) => prev.map((d) => (d.id === deck.id ? deck : d)));
+      setSlidesData(
+        deck.slides.map((s) => ({
+          ...s,
+          workingArea: s.workingArea ? { ...s.workingArea } : undefined,
+        })),
+      );
+      setShowWorkingArea(true);
+      toast.success('Working area created on disk');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not add working area');
+    }
+  }, [activeDeckId, currentSlide, devPersistenceEnabled, slidesData, totalSlides]);
 
   const closeGoToSlide = useCallback(() => {
     setGoToSlideOpen(false);
@@ -878,10 +1015,11 @@ function App() {
                 void exitPresentation();
                 setActiveDeckId(null);
               }}
-              className={`px-2 h-9 text-xs rounded-full border ${isDarkMode ? 'bg-zinc-800/70 border-zinc-600/50 hover:bg-zinc-700 text-white' : 'bg-white/70 border-zinc-300 hover:bg-zinc-200 text-zinc-700'}`}
+              className={`w-9 h-9 flex items-center justify-center rounded-full backdrop-blur-sm border transition-all duration-200 outline-none ${isDarkMode ? 'bg-zinc-800/70 border-zinc-600/50 hover:bg-zinc-700 text-white' : 'bg-white/70 border-zinc-300 hover:bg-zinc-200 text-zinc-700'}`}
               title="Back to deck picker"
+              aria-label="Back to deck picker"
             >
-              Decks
+              <Library className="w-4 h-4" />
             </button>
             <button
               type="button"
@@ -952,6 +1090,9 @@ function App() {
                     presentationMode={presentationMode}
                     onContentChange={(content) => updateSlideContent(currentSlide, content)}
                     onSourceToggle={setSlideSourceOpen}
+                    persistenceEnabled={devPersistenceEnabled}
+                    onSaveSlide={handleSaveSlideSource}
+                    saveSlidePending={slideSavePending}
                   />
                   {presentationMode ? <PresentationInkLayer isDarkMode={isDarkMode} /> : null}
                 </div>
@@ -987,6 +1128,9 @@ function App() {
                   presentationMode={presentationMode}
                   onContentChange={(content) => updateWorkingAreaContent(currentSlide, content)}
                   onSourceToggle={setWorkingSourceOpen}
+                  persistenceEnabled={devPersistenceEnabled}
+                  onSaveWorkingArea={handleSaveWorkingAreaSource}
+                  saveWorkingAreaPending={workingSavePending}
                 />
                 {presentationMode ? <PresentationInkLayer isDarkMode={isDarkMode} /> : null}
               </motion.div>
@@ -1002,14 +1146,19 @@ function App() {
               type="button"
               variant="outline"
               size="sm"
-              onClick={addSlideAfterCurrent}
+              onClick={() => void addSlideAfterCurrent()}
+              disabled={!devPersistenceEnabled}
               className={cn(
                 'h-7 min-h-7 gap-1 px-2 text-xs',
                 isDarkMode
                   ? 'border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700 hover:text-zinc-100'
                   : 'border-zinc-300 bg-zinc-100 text-zinc-700 hover:bg-zinc-200',
               )}
-              title="Add slide after current (session-only)"
+              title={
+                devPersistenceEnabled
+                  ? 'Add slide after current (saved to disk)'
+                  : 'Requires dev server (bun run dev) to save new slides'
+              }
             >
               <Plus className="w-3 h-3" />
               Add Slide
@@ -1018,8 +1167,8 @@ function App() {
               type="button"
               variant="outline"
               size="sm"
-              onClick={addWorkingAreaToCurrent}
-              disabled={hasWorkingArea}
+              onClick={() => void addWorkingAreaToCurrent()}
+              disabled={hasWorkingArea || !devPersistenceEnabled}
               className={cn(
                 'h-7 min-h-7 gap-1 px-2 text-xs',
                 isDarkMode
@@ -1029,7 +1178,9 @@ function App() {
               title={
                 hasWorkingArea
                   ? 'Working area already exists for this slide'
-                  : 'Add working area to current slide (session-only)'
+                  : devPersistenceEnabled
+                    ? 'Add working area to current slide (saved to disk)'
+                    : 'Requires dev server (bun run dev) to create working area files'
               }
             >
               <Plus className="w-3 h-3" />
@@ -1083,17 +1234,36 @@ function App() {
             <DialogDescription
               className={cn('text-sm', isDarkMode ? 'text-zinc-400' : 'text-zinc-600')}
             >
-              Title and subtitle appear in the header. Changes are saved in this browser; use Copy YAML to
-              update{' '}
-              <code
-                className={cn(
-                  'text-xs px-1 py-0.5 rounded',
-                  isDarkMode ? 'bg-zinc-800 text-zinc-200' : 'bg-zinc-100 text-zinc-800',
-                )}
-              >
-                decks/…/metadata.md
-              </code>{' '}
-              for the source of truth.
+              Title and subtitle appear in the header.
+              {devPersistenceEnabled ? (
+                <>
+                  {' '}
+                  Save writes to{' '}
+                  <code
+                    className={cn(
+                      'text-xs px-1 py-0.5 rounded',
+                      isDarkMode ? 'bg-zinc-800 text-zinc-200' : 'bg-zinc-100 text-zinc-800',
+                    )}
+                  >
+                    decks/…/metadata.md
+                  </code>
+                  . Copy YAML is still available for sharing outside the dev server.
+                </>
+              ) : (
+                <>
+                  {' '}
+                  Changes are kept in this browser until you use Copy YAML to update{' '}
+                  <code
+                    className={cn(
+                      'text-xs px-1 py-0.5 rounded',
+                      isDarkMode ? 'bg-zinc-800 text-zinc-200' : 'bg-zinc-100 text-zinc-800',
+                    )}
+                  >
+                    decks/…/metadata.md
+                  </code>
+                  . Run <code className="text-xs">bun run dev</code> to save from this dialog to disk.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-[minmax(0,0.8fr)_auto_minmax(0,1.2fr)] gap-x-6 items-start py-2">
@@ -1308,8 +1478,12 @@ function App() {
                 {copiedMetaYaml ? <Check className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
                 {copiedMetaYaml ? 'Copied' : 'Copy YAML'}
               </Button>
-              <Button type="button" onClick={saveDeckMetaDialog}>
-                Save
+              <Button
+                type="button"
+                disabled={metaSavePending}
+                onClick={() => void saveDeckMetaDialog()}
+              >
+                {metaSavePending ? 'Saving…' : 'Save'}
               </Button>
             </div>
           </DialogFooter>
