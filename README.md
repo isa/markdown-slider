@@ -55,7 +55,7 @@ markdown-slider/
 - Deck metadata comes from `decks/<deckId>/metadata.md`.
 - Slide folders are naturally sorted (`slide01`, `slide02`, ..., `slide10`).
 - If both `slide.md` and `slide.html` exist in one slide folder, `slide.md` wins.
-- Optional **`speaker.md`** in each `slideNN/` folder holds markdown speaker notes. In the app, open them from the header (notes icon) or press **N**; they appear in a bottom sheet (**Esc** closes). Notes are **view-only** in the UI—edit the file in your editor (restart the dev server if you add new `speaker.md` files so Vite picks up the glob).
+- Optional **`speaker.md`** in each `slideNN/` folder holds markdown speaker notes. In the app, open them from the header (notes icon) or press **N**; they appear in a bottom sheet (**Esc** closes). Use **Preview** / **Edit** in the sheet to view or change markdown; with **`bun run dev`**, **Save** writes `speaker.md` to disk (same dev-only persistence as slide source). Restart the dev server if you add new `speaker.md` files so Vite’s glob picks them up.
 
 ### Deck metadata (`metadata.md`)
 
@@ -78,7 +78,7 @@ tags:
 
 While viewing a deck with **`bun run dev`**, use **Edit deck metadata** (pencil in the header) and click **Save** to write `decks/<id>/metadata.md` on disk. **Copy YAML** is still available if you need the snippet outside the dev server.
 
-With the dev server running, **Save** in the slide or working-area source panel writes the current `slide.md` / `slide.html` (and working-area files) to the repo. **Add Slide** / **Add Working Area** create folders and files under `decks/` (no production build / static preview).
+With the dev server running, **Save** in the slide or working-area source panel writes the current `slide.md` / `slide.html` (and working-area files) to the repo; **Save** in the speaker notes sheet (Edit mode) writes `speaker.md`. **Add Slide** / **Add Working Area** create folders and files under `decks/` (no production build / static preview).
 
 ### Working area
 

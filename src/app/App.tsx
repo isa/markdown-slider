@@ -33,6 +33,7 @@ import {
   createWorkingAreaOnDisk,
   relativePathForSlideFile,
   relativePathForWorkingAreaFile,
+  relativePathForSpeakerNotes,
   fetchDeckFromDevApi,
 } from './deckPersistence';
 import { getRegisteredFontIds, getRegisteredPaletteIds, getRegisteredThemeIds, type DeckSlideThemeDefaults } from './slideThemes';
@@ -142,6 +143,7 @@ function App() {
   const [devPersistenceEnabled, setDevPersistenceEnabled] = useState(false);
   const [slideSavePending, setSlideSavePending] = useState(false);
   const [workingSavePending, setWorkingSavePending] = useState(false);
+  const [speakerNotesSavePending, setSpeakerNotesSavePending] = useState(false);
   const [metaSavePending, setMetaSavePending] = useState(false);
 
   const [selectedDeckId, setSelectedDeckId] = useState<string | null>(initialDeckId);
@@ -373,6 +375,12 @@ function App() {
     ));
   }, []);
 
+  const updateSpeakerNotesContent = useCallback((slideIndex: number, content: string) => {
+    setSlidesData((prev) =>
+      prev.map((s, i) => (i === slideIndex ? { ...s, speakerNotes: content } : s)),
+    );
+  }, []);
+
   const handleSaveSlideSource = useCallback(async () => {
     if (!activeDeckId || !currentSlideData || !devPersistenceEnabled) return;
     setSlideSavePending(true);
@@ -419,6 +427,31 @@ function App() {
       toast.error(e instanceof Error ? e.message : 'Could not save working area');
     } finally {
       setWorkingSavePending(false);
+    }
+  }, [activeDeckId, currentSlideData, devPersistenceEnabled]);
+
+  const handleSaveSpeakerNotes = useCallback(async () => {
+    if (!activeDeckId || !currentSlideData || !devPersistenceEnabled) return;
+    setSpeakerNotesSavePending(true);
+    try {
+      const rel = relativePathForSpeakerNotes(currentSlideData.id);
+      const content = currentSlideData.speakerNotes ?? '';
+      await saveDeckFile(activeDeckId, rel, content);
+      const deck = await fetchDeckFromDevApi(activeDeckId);
+      if (deck) {
+        setDecksCatalog((prev) => prev.map((d) => (d.id === deck.id ? deck : d)));
+        setSlidesData(
+          deck.slides.map((slide) => ({
+            ...slide,
+            workingArea: slide.workingArea ? { ...slide.workingArea } : undefined,
+          })),
+        );
+      }
+      toast.success('Speaker notes saved');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save speaker notes');
+    } finally {
+      setSpeakerNotesSavePending(false);
     }
   }, [activeDeckId, currentSlideData, devPersistenceEnabled]);
 
@@ -593,6 +626,13 @@ function App() {
         if (e.key === 'Escape') {
           e.preventDefault();
           setSpeakerNotesOpen(false);
+          return;
+        }
+        if ((e.key === 'e' || e.key === 'E') && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          if (tag !== 'TEXTAREA' && tag !== 'INPUT') {
+            e.preventDefault();
+            window.dispatchEvent(new CustomEvent('markdown-slider:speaker-notes-edit'));
+          }
           return;
         }
       }
@@ -967,6 +1007,23 @@ function App() {
     );
   }
 
+  const speakerNotesSheet =
+    activeDeckId && currentSlideData ? (
+      <SpeakerNotesSheet
+        key={currentSlideData.id}
+        open={speakerNotesOpen}
+        onOpenChange={setSpeakerNotesOpen}
+        deckId={activeDeckId}
+        slideId={currentSlideData.id}
+        value={currentSlideData.speakerNotes ?? ''}
+        onChange={(content) => updateSpeakerNotesContent(currentSlide, content)}
+        persistenceEnabled={devPersistenceEnabled}
+        onSave={handleSaveSpeakerNotes}
+        savePending={speakerNotesSavePending}
+        isDarkMode={isDarkMode}
+      />
+    ) : null;
+
   return (
     <div
       className={`h-screen w-screen flex items-center justify-center transition-colors duration-300 ${isDarkMode ? 'bg-zinc-950' : 'bg-zinc-200'} ${presentationMode ? 'p-0' : 'p-8'}`}
@@ -1010,16 +1067,6 @@ function App() {
             </p>
           </div>
         </div>
-      ) : null}
-      {activeDeckId && currentSlideData ? (
-        <SpeakerNotesSheet
-          open={speakerNotesOpen}
-          onOpenChange={setSpeakerNotesOpen}
-          deckId={activeDeckId}
-          slideId={currentSlideData.id}
-          markdown={currentSlideData.speakerNotes}
-          isDarkMode={isDarkMode}
-        />
       ) : null}
       {/* Outer container - the "device frame" (fullscreen target: entire deck UI, not browser chrome) */}
       <div
@@ -1153,6 +1200,7 @@ function App() {
                     saveSlidePending={slideSavePending}
                   />
                   {presentationMode ? <PresentationInkLayer key={`ink-slide-${currentSlide}`} /> : null}
+                  {speakerNotesSheet}
                 </div>
 
                 {/* Next arrow */}
@@ -1191,6 +1239,7 @@ function App() {
                   saveWorkingAreaPending={workingSavePending}
                 />
                 {presentationMode ? <PresentationInkLayer key={`ink-working-${currentSlide}`} /> : null}
+                {speakerNotesSheet}
               </motion.div>
             )}
           </AnimatePresence>
@@ -1201,7 +1250,7 @@ function App() {
           <span
             className={`text-[10px] min-w-0 justify-self-start text-left ${isDarkMode ? 'text-zinc-600' : 'text-zinc-400'}`}
           >
-            ← → nav · G go to · N notes · E source · Esc close · F flip · T theme · P present
+            ← → nav · G go to · N notes · E source (notes when open) · Esc close · F flip · T theme · P present
           </span>
           <div className="flex items-center gap-2 justify-center shrink-0">
             <div className="flex items-center gap-1">

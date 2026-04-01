@@ -89,3 +89,7 @@ export function relativePathForSlideFile(slideId: string, type: 'md' | 'html'): 
 export function relativePathForWorkingAreaFile(slideId: string, type: 'md' | 'html'): string {
   return `${slideId}/working-area/slide.${type === 'md' ? 'md' : 'html'}`;
 }
+
+export function relativePathForSpeakerNotes(slideId: string): string {
+  return `${slideId}/speaker.md`;
+}
