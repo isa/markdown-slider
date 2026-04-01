@@ -178,7 +178,6 @@ function App() {
   const [copiedMetaYaml, setCopiedMetaYaml] = useState(false);
   const [presentationMode, setPresentationMode] = useState(false);
   const goToSlideInputRef = useRef<HTMLInputElement>(null);
-  const presentationContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     void pingDeckDevApi().then(setDevPersistenceEnabled);
@@ -575,9 +574,6 @@ function App() {
   }, []);
 
   const enterPresentation = useCallback(() => {
-    setSlideSourceOpen(false);
-    setWorkingSourceOpen(false);
-    setSpeakerNotesOpen(false);
     setPresentationMode(true);
   }, []);
 
@@ -598,8 +594,7 @@ function App() {
   useEffect(() => {
     if (!presentationMode) return;
     const id = requestAnimationFrame(() => {
-      const el = presentationContainerRef.current;
-      if (el) void requestFullscreenDom(el);
+      void requestFullscreenDom(document.documentElement);
     });
     return () => cancelAnimationFrame(id);
   }, [presentationMode]);
@@ -672,6 +667,10 @@ function App() {
       if (presentationMode) {
         if (e.key === 'Escape') {
           e.preventDefault();
+          if (slideSourceOpen || workingSourceOpen) {
+            window.dispatchEvent(new CustomEvent('markdown-slider:toggle-source'));
+            return;
+          }
           void exitPresentation();
           return;
         }
@@ -680,10 +679,6 @@ function App() {
             e.preventDefault();
             setSpeakerNotesOpen((o) => !o);
           }
-          return;
-        }
-        if (e.key === 'e' || e.key === 'E' || e.key === 'g' || e.key === 'G') {
-          e.preventDefault();
           return;
         }
       }
@@ -1038,7 +1033,7 @@ function App() {
 
   return (
     <div
-      className={`h-screen w-screen flex items-center justify-center transition-colors duration-300 ${isDarkMode ? 'bg-zinc-950' : 'bg-zinc-200'} ${presentationMode ? 'p-0' : 'p-8'}`}
+      className={`h-screen w-screen flex items-center justify-center transition-colors duration-300 p-8 ${isDarkMode ? 'bg-zinc-950' : 'bg-zinc-200'}`}
     >
       {goToSlideOpen ? (
         <div
@@ -1080,34 +1075,53 @@ function App() {
           </div>
         </div>
       ) : null}
-      {/* Outer container - the "device frame" (fullscreen target: entire deck UI, not browser chrome) */}
       <div
-        ref={presentationContainerRef}
-        className={`w-full h-full flex flex-col overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-zinc-900 border-zinc-800/60' : 'bg-white border-zinc-300'} ${presentationMode ? 'rounded-none border-0 shadow-none' : 'rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.3)] border'}`}
+        className={`w-full h-full flex flex-col overflow-hidden transition-colors duration-300 rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.3)] border ${isDarkMode ? 'bg-zinc-900 border-zinc-800/60' : 'bg-white border-zinc-300'}`}
       >
-        {/* Title bar */}
-        <div className="shrink-0 px-10 py-5 flex items-center justify-between">
-          <div className="w-20 flex justify-start">
+        {/* Title bar — deck name uses same hue as chrome, stepped down with opacity (not flat gray) */}
+        <div className="shrink-0 px-6 py-4 grid grid-cols-[1fr_auto_1fr] items-center gap-x-3 gap-y-2">
+          <div
+            className={`min-w-0 flex justify-start ${
+              showWorkingArea
+                ? ''
+                : 'ml-[calc(theme(spacing.10)+theme(spacing.8))] md:ml-[calc(theme(spacing.10)+theme(spacing.10))]'
+            }`}
+          >
             <button
               type="button"
               onClick={openDeckMetaDialog}
-              className={`p-2 rounded-full border transition-colors outline-none ${isDarkMode ? 'bg-zinc-800/70 border-zinc-600/50 hover:bg-zinc-700 text-white' : 'bg-white/70 border-zinc-300 hover:bg-zinc-200 text-zinc-700'}`}
+              className={`shrink-0 p-2 rounded-full border transition-colors outline-none ${isDarkMode ? 'bg-zinc-800/70 border-zinc-600/50 hover:bg-zinc-700 text-white' : 'bg-white/70 border-zinc-300 hover:bg-zinc-200 text-zinc-700'}`}
               title="Edit deck metadata"
             >
               <Pencil className="w-4 h-4" />
             </button>
           </div>
-          <div className="text-center flex-1 min-w-0 px-2">
-            <h1 className={`text-2xl ${isDarkMode ? 'text-white' : 'text-zinc-800'}`} style={{ fontFamily: 'Georgia, serif' }}>
-              ✦ {effectiveDeckMeta?.title ?? 'Markdown Slides'} ✦
+          <div className="min-w-0 max-w-[min(100vw-10rem,42rem)] text-center justify-self-center px-2">
+            <h1
+              className={`text-3xl md:text-4xl font-normal leading-tight ${
+                isDarkMode ? 'text-white/78' : 'text-zinc-950/78'
+              }`}
+              style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+            >
+              {effectiveDeckMeta?.title ?? 'Markdown Slides'}
             </h1>
             {effectiveDeckMeta?.subtitle ? (
-              <p className={`text-xs tracking-widest uppercase mt-0.5 ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
+              <p
+                className={`text-xs md:text-sm tracking-wide uppercase mt-1 ${
+                  isDarkMode ? 'text-white/48' : 'text-zinc-950/55'
+                }`}
+              >
                 ─── {effectiveDeckMeta.subtitle} ───
               </p>
             ) : null}
           </div>
-          <div className="flex items-center gap-2 min-w-0 justify-end flex-wrap">
+          <div
+            className={`min-w-0 flex items-center gap-2 justify-end justify-self-end flex-wrap ${
+              showWorkingArea
+                ? ''
+                : 'mr-[calc(theme(spacing.10)+theme(spacing.8))] md:mr-[calc(theme(spacing.10)+theme(spacing.10))]'
+            }`}
+          >
             <button
               type="button"
               onClick={() => {
@@ -1168,7 +1182,7 @@ function App() {
         </div>
 
         {/* Inner content area - flips as a whole (perspective on flip layer only so slide nav stays flat / horizontal) */}
-        <div className="flex-1 min-h-0 flex flex-col min-h-0 px-6 pb-6 pt-1 relative">
+        <div className="flex-1 min-h-0 flex flex-col min-h-0 relative px-6 pb-6 pt-1">
           <AnimatePresence mode="wait" initial={false}>
             {!showWorkingArea ? (
               <motion.div
@@ -1188,7 +1202,7 @@ function App() {
                 <button
                   onClick={prevSlide}
                   disabled={currentSlide === 0}
-                  className={`relative z-10 shrink-0 w-10 h-10 flex items-center justify-center rounded-lg border transition-colors outline-none disabled:opacity-20 disabled:pointer-events-none ${isDarkMode ? 'border-zinc-700 bg-zinc-800/95 hover:bg-zinc-700 text-white shadow-sm' : 'border-zinc-300 bg-zinc-100 hover:bg-zinc-200 text-zinc-700'}`}
+                  className={`relative z-10 shrink-0 w-10 h-10 flex items-center justify-center rounded-lg border transition-colors outline-none disabled:opacity-0 disabled:pointer-events-none ${isDarkMode ? 'border-zinc-700 bg-zinc-800/95 hover:bg-zinc-700 text-white shadow-sm' : 'border-zinc-300 bg-zinc-100 hover:bg-zinc-200 text-zinc-700'}`}
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
@@ -1202,9 +1216,10 @@ function App() {
                     slideContent={currentSlideData?.content ?? '# No content'}
                     slideType={currentSlideData?.type ?? 'md'}
                     currentSlide={currentSlide}
+                    deckId={activeDeckId ?? undefined}
+                    slideFolderId={currentSlideData?.id}
                     deckThemeDefaults={activeDeckThemeDefaults}
                     isDarkMode={isDarkMode}
-                    presentationMode={presentationMode}
                     onContentChange={(content) => updateSlideContent(currentSlide, content)}
                     onSourceToggle={setSlideSourceOpen}
                     persistenceEnabled={devPersistenceEnabled}
@@ -1219,7 +1234,7 @@ function App() {
                 <button
                   onClick={nextSlide}
                   disabled={currentSlide === totalSlides - 1}
-                  className={`relative z-10 shrink-0 w-10 h-10 flex items-center justify-center rounded-lg border transition-colors outline-none disabled:opacity-20 disabled:pointer-events-none ${isDarkMode ? 'border-zinc-700 bg-zinc-800/95 hover:bg-zinc-700 text-white shadow-sm' : 'border-zinc-300 bg-zinc-100 hover:bg-zinc-200 text-zinc-700'}`}
+                  className={`relative z-10 shrink-0 w-10 h-10 flex items-center justify-center rounded-lg border transition-colors outline-none disabled:opacity-0 disabled:pointer-events-none ${isDarkMode ? 'border-zinc-700 bg-zinc-800/95 hover:bg-zinc-700 text-white shadow-sm' : 'border-zinc-300 bg-zinc-100 hover:bg-zinc-200 text-zinc-700'}`}
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
@@ -1243,7 +1258,6 @@ function App() {
                   htmlContent={currentSlideData?.workingArea?.content}
                   workingAreaType={currentSlideData?.workingArea?.type}
                   isDarkMode={isDarkMode}
-                  presentationMode={presentationMode}
                   onContentChange={(content) => updateWorkingAreaContent(currentSlide, content)}
                   onSourceToggle={setWorkingSourceOpen}
                   persistenceEnabled={devPersistenceEnabled}
@@ -1258,7 +1272,7 @@ function App() {
         </div>
 
         {/* Footer: equal side columns so slide controls stay visually centered */}
-        <div className="shrink-0 pb-6 px-10 pt-1 grid grid-cols-[1fr_auto_1fr] items-center gap-x-4 gap-y-2">
+        <div className="shrink-0 pb-6 px-6 pt-1 grid grid-cols-[1fr_auto_1fr] items-center gap-x-4 gap-y-2">
           <span
             className={`text-[10px] min-w-0 justify-self-start text-left ${isDarkMode ? 'text-zinc-600' : 'text-zinc-400'}`}
           >

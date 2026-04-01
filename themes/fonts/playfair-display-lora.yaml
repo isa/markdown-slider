@@ -1,0 +1,27 @@
+# Playfair Display + Lora
+
+id: playfair-display-lora
+name: Playfair Display + Lora
+description: High-contrast display headings, warm transitional serif body.
+
+dark:
+  css:
+    --slide-font-heading: '"Playfair Display", Georgia, "Times New Roman", serif'
+    --slide-font-body: '"Lora", Georgia, serif'
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 3rem
+    --slide-font-size-h2: 2.25rem
+    --slide-font-size-h3: 1.75rem
+    --slide-font-size-body: 1.25rem
+    --slide-line-height-body: "1.625"
+
+light:
+  css:
+    --slide-font-heading: '"Playfair Display", Georgia, "Times New Roman", serif'
+    --slide-font-body: '"Lora", Georgia, serif'
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 3rem
+    --slide-font-size-h2: 2.25rem
+    --slide-font-size-h3: 1.75rem
+    --slide-font-size-body: 1.25rem
+    --slide-line-height-body: "1.625"

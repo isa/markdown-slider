@@ -1,18 +1,29 @@
-import { useMemo, useState, useRef, useEffect, type CSSProperties, type ReactNode } from 'react';
+import {
+  useMemo,
+  useState,
+  useRef,
+  useEffect,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import { Code } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SourceEditor } from './SourceEditor';
 import { SlideMarkdown } from './SlideMarkdown';
+import { SlideCornerDecoration } from './SlideCornerDecoration';
+import { SlideLogo } from './SlideLogo';
+import { resolveSlideFolderAssetUrl } from '../deckAssetUrls';
 import { parseSlideMarkdown, type DeckSlideThemeDefaults, type SlideLayout } from '../slideThemes';
 
 interface SlidePresenterProps {
   slideContent: string;
   slideType: 'md' | 'html';
   currentSlide: number;
+  /** Resolve slide-relative image paths (`cornerImage`, `slideLogo`, `backgroundImage`, markdown images). */
+  deckId?: string;
+  slideFolderId?: string;
   deckThemeDefaults?: DeckSlideThemeDefaults;
   isDarkMode?: boolean;
-  /** Hides edit control and ignores source toggle while presenting. */
-  presentationMode?: boolean;
   onContentChange?: (content: string) => void;
   onSourceToggle?: (open: boolean) => void;
   /** Dev server: persist slide source to disk. */
@@ -30,9 +41,10 @@ export function SlidePresenter({
   slideContent,
   slideType,
   currentSlide,
+  deckId,
+  slideFolderId,
   deckThemeDefaults,
   isDarkMode = false,
-  presentationMode = false,
   onContentChange,
   onSourceToggle,
   persistenceEnabled = false,
@@ -61,6 +73,8 @@ export function SlidePresenter({
     lineChartArea,
     lineChartEndMarker,
     mermaidNodes,
+    cornerDecoration,
+    slideLogo,
   } = useMemo(() => {
     if (slideType !== 'md') {
       return {
@@ -81,10 +95,20 @@ export function SlidePresenter({
         lineChartArea: undefined,
         lineChartEndMarker: undefined,
         mermaidNodes: undefined,
+        cornerDecoration: undefined,
+        slideLogo: undefined,
       };
     }
     return parseSlideMarkdown(slideContent, isDarkMode, deckThemeDefaults);
   }, [slideContent, slideType, isDarkMode, deckThemeDefaults]);
+
+  const resolvedCoverBackgroundImage = useMemo(
+    () =>
+      coverBackgroundImage
+        ? resolveSlideFolderAssetUrl(coverBackgroundImage, deckId, slideFolderId)
+        : undefined,
+    [coverBackgroundImage, deckId, slideFolderId],
+  );
 
   const imageSlideCssVars = useMemo((): CSSProperties => {
     if (layout !== 'image') return {};
@@ -107,15 +131,7 @@ export function SlidePresenter({
   prevSlideRef.current = currentSlide;
 
   useEffect(() => {
-    if (presentationMode && showSource) {
-      setShowSource(false);
-      onSourceToggle?.(false);
-    }
-  }, [presentationMode, showSource, onSourceToggle]);
-
-  useEffect(() => {
     const onToggleSource = () => {
-      if (presentationMode) return;
       setShowSource((prev) => {
         const next = !prev;
         onSourceToggle?.(next);
@@ -124,7 +140,7 @@ export function SlidePresenter({
     };
     window.addEventListener('markdown-slider:toggle-source', onToggleSource);
     return () => window.removeEventListener('markdown-slider:toggle-source', onToggleSource);
-  }, [onSourceToggle, presentationMode]);
+  }, [onSourceToggle]);
 
   const variants = {
     enter: (dir: number) => ({
@@ -167,45 +183,47 @@ export function SlidePresenter({
     isCover && coverBackgroundImage && 'slide-root--cover--fullbleed',
     isImage && 'slide-root--image',
     isQuote && 'slide-root--quote',
+    slideType === 'md' && cornerDecoration && 'slide-root--corner-decoration',
+    slideType === 'md' && slideLogo && 'slide-root--slide-logo',
     slideType === 'md' && 'slide-root--vcenter',
   ]
     .filter(Boolean)
     .join(' ');
 
-  const coverHasBg = Boolean(isCover && coverBackgroundImage);
+  const coverHasBg = Boolean(isCover && resolvedCoverBackgroundImage);
+  /** Corner watermark must align to the slide card edge (same box as border-radius), not the padded motion shell. */
+  const cornerBleedsToSlideCard = slideType === 'md' && Boolean(cornerDecoration);
 
-  const motionShellClass =
-    coverHasBg
-      ? 'absolute inset-0 flex justify-center items-stretch p-0 overflow-hidden min-h-0'
-      : title || isCover || isImage || isQuote
-        ? 'absolute inset-0 flex justify-center items-stretch px-10 py-8 overflow-hidden min-h-0'
-        : 'absolute inset-0 flex items-center justify-center px-10 py-8 overflow-hidden min-h-0';
+  const noPadShell = coverHasBg || cornerBleedsToSlideCard;
+  const motionShellClass = noPadShell
+    ? 'absolute inset-0 flex justify-center items-stretch p-0 overflow-hidden min-h-0'
+    : title || isCover || isImage || isQuote
+      ? 'absolute inset-0 flex justify-center items-stretch px-10 py-8 overflow-hidden min-h-0'
+      : 'absolute inset-0 flex items-center justify-center px-10 py-8 overflow-hidden min-h-0';
 
   return (
     <div
       className={`h-full w-full overflow-hidden flex transition-colors duration-300 ${isDarkMode ? 'bg-zinc-900' : 'bg-zinc-50'}`}
     >
       <div className="flex-1 min-w-0 h-full relative overflow-hidden" style={{ clipPath: 'inset(0 round 0)' }}>
-        {!presentationMode ? (
-          <button
-            onClick={() => {
-              const next = !showSource;
-              setShowSource(next);
-              onSourceToggle?.(next);
-            }}
-            className={`absolute top-4 right-4 z-30 flex items-center justify-center rounded-md border transition-all duration-200 outline-none ${
-              showSource
-                ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
-                : isDarkMode
-                  ? 'bg-zinc-800/80 border-zinc-700/50 text-zinc-500 hover:text-white hover:bg-zinc-700'
-                  : 'bg-white/80 border-zinc-300 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200'
-            }`}
-            style={{ width: 28, height: 28 }}
-            title={showSource ? 'Close editor (Esc)' : 'Edit source (E)'}
-          >
-            <Code style={{ width: 14, height: 14 }} />
-          </button>
-        ) : null}
+        <button
+          onClick={() => {
+            const next = !showSource;
+            setShowSource(next);
+            onSourceToggle?.(next);
+          }}
+          className={`absolute top-4 right-4 z-30 flex items-center justify-center rounded-md border transition-all duration-200 outline-none ${
+            showSource
+              ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
+              : isDarkMode
+                ? 'bg-zinc-800/80 border-zinc-700/50 text-zinc-500 hover:text-white hover:bg-zinc-700'
+                : 'bg-white/80 border-zinc-300 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200'
+          }`}
+          style={{ width: 28, height: 28 }}
+          title={showSource ? 'Close editor (Esc)' : 'Edit source (E)'}
+        >
+          <Code style={{ width: 14, height: 14 }} />
+        </button>
 
         <AnimatePresence mode="wait" custom={direction} initial={false}>
           <motion.div
@@ -230,18 +248,29 @@ export function SlidePresenter({
                 sandbox="allow-scripts"
               />
             ) : isCover ? (
-              <div className={rootClass} style={theme.cssVariables}>
-                {coverBackgroundImage ? (
+              <div
+                className={rootClass}
+                data-color-mode={isDarkMode ? 'dark' : 'light'}
+                style={theme.cssVariables}
+              >
+                {resolvedCoverBackgroundImage ? (
                   <>
                     <div
                       className="slide-cover-bg-layer"
                       aria-hidden
                       style={{
-                        backgroundImage: `url(${JSON.stringify(coverBackgroundImage)})`,
+                        backgroundImage: `url(${JSON.stringify(resolvedCoverBackgroundImage)})`,
                       }}
                     />
                     <div className="slide-cover-bg-overlay" aria-hidden />
                   </>
+                ) : null}
+                {cornerDecoration ? (
+                  <SlideCornerDecoration
+                    decoration={cornerDecoration}
+                    deckId={deckId}
+                    slideId={slideFolderId}
+                  />
                 ) : null}
                 {title ? (
                   <SlideContentStack className="slide-content-stack--cover">
@@ -263,18 +292,31 @@ export function SlidePresenter({
                     </header>
                   </SlideContentStack>
                 ) : null}
+                {slideLogo ? (
+                  <SlideLogo logo={slideLogo} deckId={deckId} slideId={slideFolderId} />
+                ) : null}
               </div>
             ) : isImage ? (
               <div
                 className={rootClass}
+                data-color-mode={isDarkMode ? 'dark' : 'light'}
                 style={{ ...theme.cssVariables, ...imageSlideCssVars }}
               >
+                {cornerDecoration ? (
+                  <SlideCornerDecoration
+                    decoration={cornerDecoration}
+                    deckId={deckId}
+                    slideId={slideFolderId}
+                  />
+                ) : null}
                 <SlideContentStack>
                   <div className="slide-deck-body slide-deck-body--image">
                     <div className="slide-image-layout-stack">
                       <div className="slide-image-layout-figure">
                         <SlideMarkdown
                           markdown={body}
+                          deckId={deckId}
+                          slideFolderId={slideFolderId}
                           lineChartData={lineChart}
                           barChartData={barChart}
                           pieChartData={pieChart}
@@ -291,9 +333,23 @@ export function SlidePresenter({
                     </div>
                   </div>
                 </SlideContentStack>
+                {slideLogo ? (
+                  <SlideLogo logo={slideLogo} deckId={deckId} slideId={slideFolderId} />
+                ) : null}
               </div>
             ) : isQuote ? (
-              <div className={rootClass} style={theme.cssVariables}>
+              <div
+                className={rootClass}
+                data-color-mode={isDarkMode ? 'dark' : 'light'}
+                style={theme.cssVariables}
+              >
+                {cornerDecoration ? (
+                  <SlideCornerDecoration
+                    decoration={cornerDecoration}
+                    deckId={deckId}
+                    slideId={slideFolderId}
+                  />
+                ) : null}
                 <SlideContentStack className="slide-content-stack--quote">
                   {title ? (
                     <header className="slide-deck-header slide-deck-header--quote">
@@ -309,6 +365,8 @@ export function SlidePresenter({
                     <div className="slide-quote-stack">
                       <SlideMarkdown
                         markdown={body}
+                        deckId={deckId}
+                        slideFolderId={slideFolderId}
                         lineChartData={lineChart}
                         barChartData={barChart}
                         pieChartData={pieChart}
@@ -324,9 +382,23 @@ export function SlidePresenter({
                     </div>
                   </div>
                 </SlideContentStack>
+                {slideLogo ? (
+                  <SlideLogo logo={slideLogo} deckId={deckId} slideId={slideFolderId} />
+                ) : null}
               </div>
             ) : (
-              <div className={rootClass} style={theme.cssVariables}>
+              <div
+                className={rootClass}
+                data-color-mode={isDarkMode ? 'dark' : 'light'}
+                style={theme.cssVariables}
+              >
+                {cornerDecoration ? (
+                  <SlideCornerDecoration
+                    decoration={cornerDecoration}
+                    deckId={deckId}
+                    slideId={slideFolderId}
+                  />
+                ) : null}
                 <SlideContentStack>
                   {title ? (
                     <header className="slide-deck-header">
@@ -342,6 +414,8 @@ export function SlidePresenter({
                   <div className="slide-deck-body">
                     <SlideMarkdown
                       markdown={body}
+                      deckId={deckId}
+                      slideFolderId={slideFolderId}
                       lineChartData={lineChart}
                       barChartData={barChart}
                       pieChartData={pieChart}
@@ -353,6 +427,9 @@ export function SlidePresenter({
                     />
                   </div>
                 </SlideContentStack>
+                {slideLogo ? (
+                  <SlideLogo logo={slideLogo} deckId={deckId} slideId={slideFolderId} />
+                ) : null}
               </div>
             )}
           </motion.div>

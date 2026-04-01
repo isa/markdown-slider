@@ -1032,10 +1032,7 @@ export function SlideLineChartEmbed({
 
   const valueExtent = useMemo(() => valueExtentForSeries(chartData, seriesKeys), [chartData, seriesKeys]);
 
-  const [legendLine, setLegendLine] = useState<LineChartLegendLine | null>(null);
-  const onLegendHover = useCallback((entry: LineChartLegendLine | null) => {
-    setLegendLine(entry);
-  }, []);
+  const onLegendHover = useCallback((_entry: LineChartLegendLine | null) => {}, []);
 
   const lineChartGeometryRef = useRef<LineChartGeometrySnapshot | null>(null);
   const renderLineEndMarkers = useCallback(
@@ -1168,19 +1165,6 @@ export function SlideLineChartEmbed({
             />
           </ComposedChart>
         </ResponsiveContainer>
-      </div>
-      <div className="slide-chart-embed__legend-line" aria-live="polite">
-        {legendLine ? (
-          <span className="slide-chart-embed__legend-line-inner">
-            <span className="slide-chart-embed__legend-line-axis">{legendLine.label}</span>
-            <span className="slide-chart-embed__legend-line-sep"> · </span>
-            <span className="slide-chart-embed__legend-line-pair" style={{ color: legendLine.color }}>
-              {legendLine.name}: {legendLine.value}
-            </span>
-          </span>
-        ) : (
-          <span className="slide-chart-embed__legend-line-placeholder">Hover chart for values</span>
-        )}
       </div>
     </div>
   );

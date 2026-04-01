@@ -285,6 +285,59 @@ export function deckDevApiPlugin() {
           return;
         }
 
+        /** Serve binary assets next to slide.md (corner images, etc.) — dev fallback when not yet in Vite glob. */
+        if (req.method === 'GET' && url.startsWith('/__deck/asset/')) {
+          const rest = url.slice('/__deck/asset/'.length);
+          const segments = rest.split('/').filter(Boolean).map((s) => {
+            try {
+              return decodeURIComponent(s);
+            } catch {
+              return s;
+            }
+          });
+          if (segments.length < 3) {
+            sendJson(res, 400, { error: 'Invalid asset path' });
+            return;
+          }
+          const deckId = segments[0];
+          const slideId = segments[1];
+          const relPath = segments.slice(2).join('/');
+          try {
+            assertDeckId(deckId);
+            if (!/^slide\d+$/i.test(slideId)) {
+              throw new Error('Invalid slide id');
+            }
+            if (!relPath || relPath.includes('..')) {
+              throw new Error('Invalid asset name');
+            }
+            const ext = path.extname(relPath).toLowerCase();
+            const allowed = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
+            if (!allowed.includes(ext)) {
+              throw new Error('Unsupported file type');
+            }
+            const abs = safeResolveUnderDeck(deckId, `${slideId}/${relPath}`);
+            if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) {
+              sendJson(res, 404, { error: 'Not found' });
+              return;
+            }
+            const mime = {
+              '.png': 'image/png',
+              '.jpg': 'image/jpeg',
+              '.jpeg': 'image/jpeg',
+              '.gif': 'image/gif',
+              '.webp': 'image/webp',
+              '.svg': 'image/svg+xml',
+            }[ext];
+            res.statusCode = 200;
+            res.setHeader('Content-Type', mime);
+            res.setHeader('Cache-Control', 'no-cache');
+            res.end(fs.readFileSync(abs));
+          } catch (e) {
+            sendJson(res, 400, { error: e instanceof Error ? e.message : String(e) });
+          }
+          return;
+        }
+
         if (req.method !== 'POST') {
           sendJson(res, 405, { error: 'Method not allowed' });
           return;

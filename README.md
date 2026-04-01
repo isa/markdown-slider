@@ -132,7 +132,44 @@ If `palette` / `font` are missing on a slide, deck defaults apply (see **Deck me
 | `image` | Centered figure from a markdown image in the body; optional `caption`, `imageWidth`, `imageHeight` in frontmatter. |
 | `quote` | Quote body (e.g. blockquote); `subtitle` works well as attribution. |
 
-Examples: `decks/sample-deck/slide05` (content), `slide07` / `slide51` (cover), `slide06` (infographic), `slide08` (image), `slide59` (quote).
+Examples: `decks/sample-deck/slide05` (content), `slide07` / `slide51` (cover), `slide06` (infographic), `slide08` (image), `slide59` (quote), `slide61` (corner watermark).
+
+### Deck image URLs
+
+For **`backgroundImage:`**, **`cornerImage:`**, **`slideLogo:`** / **`logoImage:`**, and markdown **`![](...)`** images, paths resolve as follows:
+
+- **`http://` or `https://`** — used as-is.
+- **Leading `/`** — site root (e.g. files under `public/`).
+- **No scheme and no leading `/`** — treated as **slide-relative**: `decks/<deckId>/<slideNN>/your-file.png`.
+
+Supported extensions for bundled slide assets: `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`. At build time those files are included; with `bun run dev`, new files are also served via `/__deck/asset/…` until the dev server rescans (restart if Vite does not pick up a new file).
+
+### Corner watermark (`cornerImage:` in frontmatter)
+
+Optional decorative image anchored to a corner of the slide card (any markdown `layout:`). The image is masked with a diagonal fade so it reads as a semi-transparent watermark. The layer sits flush with the slide’s rounded border (slide padding is applied to the content stack instead so the watermark is not inset).
+
+| Key | Purpose |
+|-----|---------|
+| `cornerImage` | Image URL or slide-relative filename (required to enable the feature). |
+| `cornerPosition` | `top-left`, `top-right`, `bottom-left`, `bottom-right` (default `top-right`). Also accepts `topLeft`-style names. |
+| `cornerScale` | Number (e.g. `1.5`, `2`, `0.5`) — multiplies the corner watermark region size (base ≈ `min(42%, 14rem)`), capped by the slide. Default `1`. |
+| `cornerAppearance` | Comma-separated CSS filters: `grayscale`, `white` (light silhouette), `invert`. Example: `invert, grayscale`. Omit or `none` for no filter. YAML list form also works: `[invert, grayscale]`. Alias: `cornerFilter`. |
+| `cornerOpacity` | 0–1 for overall layer opacity. Default `1`. |
+| `cornerGradient` | `outward` (default), `soft`, or `strong` — radial mask centered on the slide corner (`cornerPosition`), fading toward the slide center. Use `linear` for the previous diagonal linear mask. |
+
+### Slide logo (`slideLogo:` / `logoImage:` in frontmatter)
+
+Optional **non-watermark** logo or brand mark: **no gradient mask**, positioned in a corner with **inset** from the slide card (`logoPadding`). The layer sits above the slide body content (below the editor chrome in the app). Use this when you want padding and distance from the edges; use **`cornerImage:`** when you want the faded corner treatment.
+
+| Key | Purpose |
+|-----|---------|
+| `slideLogo` or `logoImage` | Image URL or slide-relative filename (required to enable the feature). |
+| `logoPosition` | `top-left`, `top-right`, `bottom-left`, `bottom-right` (default `top-right`). Same naming style as `cornerPosition`. |
+| `logoScale` | Number — multiplies the logo region size (base ≈ `min(32%, 11rem)`). Default `1`. |
+| `logoPadding` | CSS length(s) inset from the chosen corner: one value for both axes, or two values as `vertical horizontal` (e.g. `1rem 2rem`). Default `1.25rem`. |
+| `logoOpacity` | 0–1. Default `1`. |
+| `logoAppearance` / `logoFilter` | Same as `cornerAppearance` / `cornerFilter` (e.g. `grayscale`, `invert`). |
+| `logoAlt` | Optional accessible label for the image. |
 
 ---
 

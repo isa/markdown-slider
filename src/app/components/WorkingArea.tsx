@@ -12,8 +12,6 @@ interface WorkingAreaProps {
   workingAreaType?: 'md' | 'html';
   /** When false, toolbar and preview chrome match light theme (slides). */
   isDarkMode?: boolean;
-  /** Hides toolbar and source controls while presenting. */
-  presentationMode?: boolean;
   onContentChange?: (content: string) => void;
   onSourceToggle?: (open: boolean) => void;
   /** Dev server: persist working-area source to disk. */
@@ -48,7 +46,6 @@ export function WorkingArea({
   htmlContent,
   workingAreaType,
   isDarkMode = false,
-  presentationMode = false,
   onContentChange,
   onSourceToggle,
   persistenceEnabled = false,
@@ -62,15 +59,7 @@ export function WorkingArea({
   const contentType = workingAreaType ?? 'html';
 
   useEffect(() => {
-    if (presentationMode && showSource) {
-      setShowSource(false);
-      onSourceToggle?.(false);
-    }
-  }, [presentationMode, showSource, onSourceToggle]);
-
-  useEffect(() => {
     const onToggleSource = () => {
-      if (presentationMode) return;
       if (mode !== 'content' || !hasContent) return;
       setShowSource((prev) => {
         const next = !prev;
@@ -80,7 +69,7 @@ export function WorkingArea({
     };
     window.addEventListener('markdown-slider:toggle-source', onToggleSource);
     return () => window.removeEventListener('markdown-slider:toggle-source', onToggleSource);
-  }, [mode, hasContent, onSourceToggle, presentationMode]);
+  }, [mode, hasContent, onSourceToggle]);
 
   const tabActive = isDarkMode
     ? 'bg-zinc-700 text-white'
@@ -96,7 +85,6 @@ export function WorkingArea({
       }`}
     >
       {/* Toolbar */}
-      {!presentationMode ? (
       <div
         className={`flex items-center justify-between px-4 py-2 border-b z-10 ${
           isDarkMode ? 'bg-zinc-800 border-zinc-700' : 'bg-zinc-100 border-zinc-200'
@@ -153,7 +141,6 @@ export function WorkingArea({
           <div className={`text-xs ${isDarkMode ? 'text-zinc-500' : 'text-zinc-500'}`}>Working Area</div>
         </div>
       </div>
-      ) : null}
 
       {/* Content */}
       <div className="flex-1 overflow-hidden relative flex">

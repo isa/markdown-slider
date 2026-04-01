@@ -4,7 +4,7 @@ subtitle: DECK MODE
 author: Isa Goksu
 date: 2026-03-31
 defaultPalette: default
-defaultFont: libre-baskerville-franklin
+defaultFont: cardo-roboto-serif
 description: One slide per feature — typography, layouts, charts, Mermaid,
   themes, animations, tables, columns, HTML, and working areas.
 tags:

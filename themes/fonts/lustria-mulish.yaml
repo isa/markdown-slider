@@ -1,0 +1,27 @@
+# Lustria + Mulish
+
+id: lustria-mulish
+name: Lustria + Mulish
+description: Elegant serif headings, clean humanist sans body.
+
+dark:
+  css:
+    --slide-font-heading: '"Lustria", Georgia, serif'
+    --slide-font-body: '"Mulish", system-ui, sans-serif'
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 3rem
+    --slide-font-size-h2: 2.25rem
+    --slide-font-size-h3: 1.75rem
+    --slide-font-size-body: 1.25rem
+    --slide-line-height-body: "1.625"
+
+light:
+  css:
+    --slide-font-heading: '"Lustria", Georgia, serif'
+    --slide-font-body: '"Mulish", system-ui, sans-serif'
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 3rem
+    --slide-font-size-h2: 2.25rem
+    --slide-font-size-h3: 1.75rem
+    --slide-font-size-body: 1.25rem
+    --slide-line-height-body: "1.625"

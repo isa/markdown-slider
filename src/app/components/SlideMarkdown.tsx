@@ -4,8 +4,10 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
+import { remarkHighlightMark } from 'remark-highlight-mark';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { remarkRehypeHighlightHandlers } from '../markdown/highlightMarkRehype';
 import { parseSlideSegments } from '../markdown/slideColumnSegments';
 import type { SlideChartRow } from '../slideChartData';
 import {
@@ -16,11 +18,14 @@ import {
   type PieChartLegendPosition,
 } from './SlideChartEmbeds';
 import { SlideMermaidEmbed, type MermaidNodeStyle } from './SlideMermaidEmbed';
+import { resolveSlideFolderAssetUrl } from '../deckAssetUrls';
 
 const slideSanitizeSchema = {
   ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames ?? []), 'mark'],
   attributes: {
     ...defaultSchema.attributes,
+    mark: [['className', /^slide-[\w-]+$/]],
     div: [
       ...(defaultSchema.attributes?.div ?? []),
       ['className', /^(?:slide-[\w-]+|align--(?:left|center|right))$/],
@@ -59,9 +64,16 @@ function codeToStringRaw(children: ReactNode): string {
   return String(children ?? '');
 }
 
+/** Split markdown on standalone `===` lines, yielding alternating text chunks and spacer markers. */
+function splitOnSpacers(md: string): string[] {
+  return md.split(/^===$/m);
+}
+
 /** Single markdown document (no @@@columns splitting) — used inside column cells. */
 export function SlideMarkdownBody({
   markdown,
+  deckId,
+  slideFolderId,
   lineChartData,
   barChartData,
   pieChartData,
@@ -72,6 +84,9 @@ export function SlideMarkdownBody({
   mermaidNodes,
 }: {
   markdown: string;
+  /** Resolve bare image paths against `decks/<deckId>/<slideFolderId>/` */
+  deckId?: string;
+  slideFolderId?: string;
   lineChartData?: SlideChartRow[];
   barChartData?: SlideChartRow[];
   pieChartData?: SlideChartRow[];
@@ -86,9 +101,80 @@ export function SlideMarkdownBody({
   /** From YAML `mermaidNodes:` */
   mermaidNodes?: MermaidNodeStyle;
 }) {
+  const chunks = useMemo(() => splitOnSpacers(markdown), [markdown]);
+
+  if (chunks.length > 1) {
+    return (
+      <>
+        {chunks.map((chunk, i) => (
+          <Fragment key={i}>
+            {i > 0 && <div className="slide-spacer" role="presentation" aria-hidden />}
+            <SlideMarkdownChunk
+              markdown={chunk}
+              deckId={deckId}
+              slideFolderId={slideFolderId}
+              lineChartData={lineChartData}
+              barChartData={barChartData}
+              pieChartData={pieChartData}
+              pieChartLegendPosition={pieChartLegendPosition}
+              barChartStacked={barChartStacked}
+              lineChartArea={lineChartArea}
+              lineChartEndMarker={lineChartEndMarker}
+              mermaidNodes={mermaidNodes}
+            />
+          </Fragment>
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <SlideMarkdownChunk
+      markdown={markdown}
+      deckId={deckId}
+      slideFolderId={slideFolderId}
+      lineChartData={lineChartData}
+      barChartData={barChartData}
+      pieChartData={pieChartData}
+      pieChartLegendPosition={pieChartLegendPosition}
+      barChartStacked={barChartStacked}
+      lineChartArea={lineChartArea}
+      lineChartEndMarker={lineChartEndMarker}
+      mermaidNodes={mermaidNodes}
+    />
+  );
+}
+
+/** Renders a single markdown chunk (no `===` spacers). */
+function SlideMarkdownChunk({
+  markdown,
+  deckId,
+  slideFolderId,
+  lineChartData,
+  barChartData,
+  pieChartData,
+  pieChartLegendPosition,
+  barChartStacked,
+  lineChartArea,
+  lineChartEndMarker,
+  mermaidNodes,
+}: {
+  markdown: string;
+  deckId?: string;
+  slideFolderId?: string;
+  lineChartData?: SlideChartRow[];
+  barChartData?: SlideChartRow[];
+  pieChartData?: SlideChartRow[];
+  pieChartLegendPosition?: PieChartLegendPosition;
+  barChartStacked?: boolean;
+  lineChartArea?: boolean;
+  lineChartEndMarker?: LineChartEndMarker;
+  mermaidNodes?: MermaidNodeStyle;
+}) {
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={[remarkGfm, remarkHighlightMark]}
+      remarkRehypeOptions={{ handlers: remarkRehypeHighlightHandlers }}
       rehypePlugins={[rehypeRaw, [rehypeSanitize, slideSanitizeSchema]]}
       components={{
         h1: (props) => heading(1, props),
@@ -114,9 +200,13 @@ export function SlideMarkdownBody({
             {children}
           </li>
         ),
-        img: ({ alt, src, ...rest }) => (
-          <img {...rest} alt={alt ?? ''} src={src} className="slide-img" loading="lazy" />
-        ),
+        img: ({ alt, src, ...rest }) => {
+          const resolved =
+            typeof src === 'string' && src
+              ? resolveSlideFolderAssetUrl(src, deckId, slideFolderId)
+              : src;
+          return <img {...rest} alt={alt ?? ''} src={resolved} className="slide-img" loading="lazy" />;
+        },
         code: ({ children, className }) => {
           const rawCode = codeToStringRaw(children);
           const codeString = codeToString(children);
@@ -251,6 +341,11 @@ export function SlideMarkdownBody({
             {children}
           </em>
         ),
+        mark: ({ children, className, ...rest }) => (
+          <mark {...rest} className={className ? `slide-mark ${className}` : 'slide-mark'}>
+            {children}
+          </mark>
+        ),
         div: ({ className, children, ...rest }) => {
           if (className === 'slide-embed-line-chart')
             return (
@@ -281,6 +376,8 @@ export function SlideMarkdownBody({
 
 function ColumnGrid({
   cells,
+  deckId,
+  slideFolderId,
   lineChartData,
   barChartData,
   pieChartData,
@@ -291,6 +388,8 @@ function ColumnGrid({
   mermaidNodes,
 }: {
   cells: string[];
+  deckId?: string;
+  slideFolderId?: string;
   lineChartData?: SlideChartRow[];
   barChartData?: SlideChartRow[];
   pieChartData?: SlideChartRow[];
@@ -308,6 +407,8 @@ function ColumnGrid({
           <div className="slide-columns__cell">
             <SlideMarkdownBody
               markdown={cell}
+              deckId={deckId}
+              slideFolderId={slideFolderId}
               lineChartData={lineChartData}
               barChartData={barChartData}
               pieChartData={pieChartData}
@@ -329,6 +430,9 @@ function ColumnGrid({
 
 interface SlideMarkdownProps {
   markdown: string;
+  /** Resolve bare `![](file.png)` paths against the active slide folder */
+  deckId?: string;
+  slideFolderId?: string;
   /** From slide YAML `lineChart:` — wired to `<div class="slide-embed-line-chart">` */
   lineChartData?: SlideChartRow[];
   /** From slide YAML `barChart:` — wired to `<div class="slide-embed-bar-chart">` */
@@ -349,6 +453,8 @@ interface SlideMarkdownProps {
 
 export function SlideMarkdown({
   markdown,
+  deckId,
+  slideFolderId,
   lineChartData,
   barChartData,
   pieChartData,
@@ -367,6 +473,8 @@ export function SlideMarkdown({
           <SlideMarkdownBody
             key={i}
             markdown={seg.content}
+            deckId={deckId}
+            slideFolderId={slideFolderId}
             lineChartData={lineChartData}
             barChartData={barChartData}
             pieChartData={pieChartData}
@@ -380,6 +488,8 @@ export function SlideMarkdown({
           <ColumnGrid
             key={i}
             cells={seg.cells}
+            deckId={deckId}
+            slideFolderId={slideFolderId}
             lineChartData={lineChartData}
             barChartData={barChartData}
             pieChartData={pieChartData}

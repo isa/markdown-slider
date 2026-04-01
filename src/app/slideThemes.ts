@@ -207,6 +207,180 @@ function normalizeDeckThemeDefaults(
   return deck;
 }
 
+/** YAML `cornerPosition:` — anchor for `cornerImage:` */
+export type SlideCornerPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+
+/** Single CSS filter step for `cornerAppearance:` / `cornerFilter:` (can combine several). */
+export type SlideCornerFilterToken = 'grayscale' | 'white' | 'invert';
+
+const CORNER_FILTER_CSS: Record<SlideCornerFilterToken, string> = {
+  grayscale: 'grayscale(1)',
+  white: 'brightness(0) invert(1)',
+  invert: 'invert(1)',
+};
+
+/** Combined `filter` value for `<img>` — order matches frontmatter (left to right). */
+export function cornerImageFilterCss(tokens: SlideCornerFilterToken[]): string | undefined {
+  if (!tokens.length) return undefined;
+  return tokens.map((t) => CORNER_FILTER_CSS[t]).join(' ');
+}
+
+/** `outward` | `soft` | `strong` = radial mask centered on slide corner; `linear` = legacy diagonal fade */
+export type SlideCornerGradient = 'outward' | 'soft' | 'strong' | 'linear';
+
+/** Parsed `cornerImage:` and related frontmatter */
+export interface SlideCornerDecoration {
+  src: string;
+  position: SlideCornerPosition;
+  scale: number;
+  /** From `cornerAppearance:` — one or more of grayscale, white, invert */
+  filters: SlideCornerFilterToken[];
+  /** 0–1, multiplied with the gradient mask */
+  opacity: number;
+  gradient: SlideCornerGradient;
+  /**
+   * Optional radial mask circle radius (`cornerGradientRadius:` or `cornerGradientLength:`), e.g. `180px`,
+   * `12rem`, `45%`, or a positive number (interpreted as `px`). Overrides preset `cornerGradient` stop distances.
+   */
+  gradientRadius?: string;
+}
+
+function parseCornerPosition(raw: unknown): SlideCornerPosition | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const s = raw.trim().toLowerCase().replace(/_/g, '-');
+  const c = s.replace(/-/g, '');
+  if (c === 'topleft') return 'top-left';
+  if (c === 'topright') return 'top-right';
+  if (c === 'bottomleft') return 'bottom-left';
+  if (c === 'bottomright') return 'bottom-right';
+  return undefined;
+}
+
+function parseCornerScale(raw: unknown): number {
+  if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) return raw;
+  if (typeof raw === 'string') {
+    const n = parseFloat(raw.trim());
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return 1;
+}
+
+function parseCornerOpacity(raw: unknown): number {
+  if (raw === undefined || raw === null) return 1;
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return Math.min(1, Math.max(0, raw));
+  }
+  if (typeof raw === 'string') {
+    const n = parseFloat(raw.trim());
+    if (Number.isFinite(n)) return Math.min(1, Math.max(0, n));
+  }
+  return 1;
+}
+
+function parseCornerGradient(raw: unknown): SlideCornerGradient {
+  if (typeof raw !== 'string') return 'outward';
+  const s = raw.trim().toLowerCase();
+  if (s === 'soft' || s === 'strong' || s === 'outward' || s === 'linear') return s;
+  return 'outward';
+}
+
+/** `cornerGradientRadius:` / `cornerGradientLength:` — CSS length for radial mask circle (number → px). */
+function parseCornerGradientRadius(d: Record<string, unknown>): string | undefined {
+  const raw = d.cornerGradientRadius ?? d.cornerGradientLength;
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) return `${raw}px`;
+  if (typeof raw === 'string' && raw.trim()) return raw.trim();
+  return undefined;
+}
+
+function parseOneCornerFilterToken(s: string): SlideCornerFilterToken | undefined {
+  const t = s.trim().toLowerCase();
+  if (t === 'grayscale' || t === 'grey' || t === 'gray') return 'grayscale';
+  if (t === 'white' || t === 'silhouette') return 'white';
+  if (t === 'invert' || t === 'inverted' || t === 'inverse') return 'invert';
+  if (t === 'none' || t === 'off' || t === 'false') return undefined;
+  return undefined;
+}
+
+/** `cornerAppearance: grayscale` or `invert, grayscale` or YAML `[invert, grayscale]` */
+function parseCornerFilters(raw: unknown): SlideCornerFilterToken[] {
+  const parts: string[] = [];
+  if (Array.isArray(raw)) {
+    for (const item of raw) {
+      if (typeof item === 'string') {
+        for (const seg of item.split(',')) {
+          const p = seg.trim();
+          if (p) parts.push(p);
+        }
+      }
+    }
+  } else if (typeof raw === 'string') {
+    for (const seg of raw.split(',')) {
+      const p = seg.trim();
+      if (p) parts.push(p);
+    }
+  }
+  const out: SlideCornerFilterToken[] = [];
+  const seen = new Set<SlideCornerFilterToken>();
+  for (const p of parts) {
+    const tok = parseOneCornerFilterToken(p);
+    if (tok && !seen.has(tok)) {
+      seen.add(tok);
+      out.push(tok);
+    }
+  }
+  return out;
+}
+
+function parseCornerDecoration(d: Record<string, unknown>): SlideCornerDecoration | undefined {
+  const srcRaw = d.cornerImage;
+  if (typeof srcRaw !== 'string' || !srcRaw.trim()) return undefined;
+  const filters = parseCornerFilters(d.cornerAppearance ?? d.cornerFilter);
+  return {
+    src: srcRaw.trim(),
+    position: parseCornerPosition(d.cornerPosition) ?? 'top-right',
+    scale: parseCornerScale(d.cornerScale),
+    filters,
+    opacity: parseCornerOpacity(d.cornerOpacity),
+    gradient: parseCornerGradient(d.cornerGradient),
+    gradientRadius: parseCornerGradientRadius(d),
+  };
+}
+
+/** YAML `slideLogo:` / `logoImage:` — inset brand mark (no gradient mask; distinct from `cornerImage:`) */
+export interface SlideLogo {
+  src: string;
+  position: SlideCornerPosition;
+  scale: number;
+  /** CSS length(s), e.g. `1.5rem` or `1rem 2rem` (vertical / horizontal inset from the chosen corner). */
+  padding: string;
+  /** From `logoAppearance:` — same tokens as corner */
+  filters: SlideCornerFilterToken[];
+  opacity: number;
+  alt?: string;
+}
+
+function parseLogoPadding(raw: unknown): string {
+  if (typeof raw !== 'string' || !raw.trim()) return '1.25rem';
+  return raw.trim();
+}
+
+function parseSlideLogo(d: Record<string, unknown>): SlideLogo | undefined {
+  const srcRaw = d.slideLogo ?? d.logoImage;
+  if (typeof srcRaw !== 'string' || !srcRaw.trim()) return undefined;
+  const filters = parseCornerFilters(d.logoAppearance ?? d.logoFilter);
+  const altRaw = d.logoAlt;
+  return {
+    src: srcRaw.trim(),
+    position: parseCornerPosition(d.logoPosition) ?? 'top-right',
+    scale: parseCornerScale(d.logoScale),
+    padding: parseLogoPadding(d.logoPadding),
+    filters,
+    opacity: parseCornerOpacity(d.logoOpacity),
+    alt: typeof altRaw === 'string' && altRaw.trim() ? altRaw.trim() : undefined,
+  };
+}
+
 export function parseSlideMarkdown(
   raw: string,
   isDarkMode = false,
@@ -241,6 +415,10 @@ export function parseSlideMarkdown(
   lineChartEndMarker?: LineChartEndMarker;
   /** YAML `mermaidNodes:` — `filled` (default) or `outline` (stroke-only flowchart boxes) */
   mermaidNodes?: 'filled' | 'outline';
+  /** YAML `cornerImage:` — optional corner watermark with position, scale, filters */
+  cornerDecoration?: SlideCornerDecoration;
+  /** YAML `slideLogo:` / `logoImage:` — inset logo (no gradient); uses `logoPadding` for distance from edges */
+  slideLogo?: SlideLogo;
 } {
   const { data, content } = matter(raw);
   const d = data as Record<string, unknown>;
@@ -325,6 +503,9 @@ export function parseSlideMarkdown(
     else if (s === 'filled' || s === 'fill solid') mermaidNodes = 'filled';
   }
 
+  const cornerDecoration = parseCornerDecoration(d);
+  const slideLogo = parseSlideLogo(d);
+
   return {
     body: content.trim(),
     theme,
@@ -343,5 +524,7 @@ export function parseSlideMarkdown(
     lineChartArea,
     lineChartEndMarker,
     mermaidNodes,
+    cornerDecoration,
+    slideLogo,
   };
 }

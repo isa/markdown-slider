@@ -5,7 +5,8 @@
   max-width: 56rem;
   margin-inline: auto;
   background: var(--slide-bg);
-  border-radius: 0.75rem;
+  --slide-card-radius: 0.75rem;
+  border-radius: var(--slide-card-radius);
   padding: 1.5rem 2rem;
   box-sizing: border-box;
   max-height: 100%;
@@ -64,8 +65,9 @@
   align-self: flex-start;
 }
 
-.slide-prose.slide-align--center .slide-deck-header,
-.slide-prose.slide-align--right .slide-deck-header {
+/* Keep title left on center/right *content* slides; quote layout uses .slide-deck-header--quote for its own alignment */
+.slide-prose.slide-align--center .slide-deck-header:not(.slide-deck-header--quote),
+.slide-prose.slide-align--right .slide-deck-header:not(.slide-deck-header--quote) {
   text-align: left;
   align-self: flex-start;
 }
@@ -215,6 +217,292 @@
     transparent 58%
   );
 }
+
+/* Positioning context for `slideLogo:` (absolute inset mark) */
+.slide-root.slide-root--slide-logo {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Frontmatter `slideLogo:` — inset brand mark (no gradient mask); above body content */
+.slide-slide-logo {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  box-sizing: border-box;
+  container-type: size;
+  --slide-logo-box: min(
+    100cqw,
+    100cqh,
+    calc(min(32cqw, 11rem) * var(--slide-logo-scale, 1))
+  );
+  width: var(--slide-logo-box);
+  height: var(--slide-logo-box);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slide-slide-logo__img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  margin: 0;
+}
+
+.slide-slide-logo--top-right .slide-slide-logo__img {
+  object-position: right top;
+}
+
+.slide-slide-logo--top-left .slide-slide-logo__img {
+  object-position: left top;
+}
+
+.slide-slide-logo--bottom-right .slide-slide-logo__img {
+  object-position: right bottom;
+}
+
+.slide-slide-logo--bottom-left .slide-slide-logo__img {
+  object-position: left bottom;
+}
+
+/* Frontmatter `cornerImage:` — above photo overlay (z-index 1), below title/content (stack z-index 3) */
+/* cornerScale multiplies the quadrant box (transform on <img> was clipped by overflow:hidden). */
+/* Quadrant must stay square: width/height used min(42%,14rem) with % resolving to different bases
+   (width vs height), so the box was rectangular on wide slides — radial mask looked curved on one
+   edge and cut flat on the other. Use one length for both axes via container units (see slide-root). */
+.slide-corner-decoration {
+  position: absolute;
+  z-index: 2;
+  --slide-corner-box: min(
+    100cqw,
+    100cqh,
+    calc(min(42cqw, 14rem) * var(--slide-corner-scale, 1))
+  );
+  width: var(--slide-corner-box);
+  height: var(--slide-corner-box);
+  max-width: 100%;
+  max-height: 100%;
+  pointer-events: none;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  /* Clip to the same rounded corner as the slide card */
+  overflow: hidden;
+}
+
+/* Corner watermark: no padding on the root so the layer can sit flush with the rounded border;
+   inset title/body via the content stack instead (see > .slide-content-stack). */
+.slide-root.slide-root--corner-decoration {
+  position: relative;
+  isolation: isolate;
+  container-type: size;
+  padding: 0;
+  /* Fill the motion shell so the absolute corner layer shares the same box as border-radius. */
+  align-self: stretch;
+  min-height: 0;
+  /* Same as full-bleed cover: default slide-root max-width + margin-inline auto insets the whole card,
+     leaving empty space beside the watermark; span full width so left:0 matches the slide chrome. */
+  max-width: none;
+  width: 100%;
+  margin-inline: 0;
+}
+
+.slide-root.slide-root--corner-decoration > .slide-content-stack {
+  position: relative;
+  z-index: 3;
+  padding: 1.5rem 2rem;
+  box-sizing: border-box;
+  /* Keep typography line length where the card used to be a centered 56rem column */
+  max-width: 56rem;
+  margin-inline: auto;
+  width: 100%;
+}
+
+/* Cover full-bleed: title stack already applies its own padding on the header */
+.slide-root.slide-root--corner-decoration.slide-root--cover.slide-root--cover--fullbleed
+  > .slide-content-stack--cover {
+  padding: 0;
+}
+
+.slide-corner-decoration--top-right {
+  top: 0;
+  right: 0;
+  border-top-right-radius: var(--slide-card-radius, 0.75rem);
+}
+
+.slide-corner-decoration--top-left {
+  top: 0;
+  left: 0;
+  border-top-left-radius: var(--slide-card-radius, 0.75rem);
+}
+
+.slide-corner-decoration--bottom-right {
+  bottom: 0;
+  right: 0;
+  border-bottom-right-radius: var(--slide-card-radius, 0.75rem);
+}
+
+.slide-corner-decoration--bottom-left {
+  bottom: 0;
+  left: 0;
+  border-bottom-left-radius: var(--slide-card-radius, 0.75rem);
+}
+
+.slide-corner-decoration__mask {
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+/* Anchor image to the slide corner (not centered — centering pulled the asset toward the middle). */
+.slide-corner-decoration--top-right .slide-corner-decoration__mask {
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.slide-corner-decoration--top-left .slide-corner-decoration__mask {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.slide-corner-decoration--bottom-right .slide-corner-decoration__mask {
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+.slide-corner-decoration--bottom-left .slide-corner-decoration__mask {
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+/* Radial mask: center at the slide corner (matches cornerPosition); opaque at corner, fade toward slide center */
+.slide-corner-decoration--top-right.slide-corner-decoration--gradient-outward .slide-corner-decoration__mask {
+  -webkit-mask-image: radial-gradient(circle at 100% 0%, #000 0%, transparent 68%);
+  mask-image: radial-gradient(circle at 100% 0%, #000 0%, transparent 68%);
+}
+
+.slide-corner-decoration--top-right.slide-corner-decoration--gradient-soft .slide-corner-decoration__mask {
+  -webkit-mask-image: radial-gradient(circle at 100% 0%, #000 0%, transparent 85%);
+  mask-image: radial-gradient(circle at 100% 0%, #000 0%, transparent 85%);
+}
+
+.slide-corner-decoration--top-right.slide-corner-decoration--gradient-strong .slide-corner-decoration__mask {
+  -webkit-mask-image: radial-gradient(circle at 100% 0%, #000 0%, transparent 48%);
+  mask-image: radial-gradient(circle at 100% 0%, #000 0%, transparent 48%);
+}
+
+.slide-corner-decoration--top-left.slide-corner-decoration--gradient-outward .slide-corner-decoration__mask {
+  -webkit-mask-image: radial-gradient(circle at 0% 0%, #000 0%, transparent 68%);
+  mask-image: radial-gradient(circle at 0% 0%, #000 0%, transparent 68%);
+}
+
+.slide-corner-decoration--top-left.slide-corner-decoration--gradient-soft .slide-corner-decoration__mask {
+  -webkit-mask-image: radial-gradient(circle at 0% 0%, #000 0%, transparent 85%);
+  mask-image: radial-gradient(circle at 0% 0%, #000 0%, transparent 85%);
+}
+
+.slide-corner-decoration--top-left.slide-corner-decoration--gradient-strong .slide-corner-decoration__mask {
+  -webkit-mask-image: radial-gradient(circle at 0% 0%, #000 0%, transparent 48%);
+  mask-image: radial-gradient(circle at 0% 0%, #000 0%, transparent 48%);
+}
+
+.slide-corner-decoration--bottom-right.slide-corner-decoration--gradient-outward .slide-corner-decoration__mask {
+  -webkit-mask-image: radial-gradient(circle at 100% 100%, #000 0%, transparent 68%);
+  mask-image: radial-gradient(circle at 100% 100%, #000 0%, transparent 68%);
+}
+
+.slide-corner-decoration--bottom-right.slide-corner-decoration--gradient-soft .slide-corner-decoration__mask {
+  -webkit-mask-image: radial-gradient(circle at 100% 100%, #000 0%, transparent 85%);
+  mask-image: radial-gradient(circle at 100% 100%, #000 0%, transparent 85%);
+}
+
+.slide-corner-decoration--bottom-right.slide-corner-decoration--gradient-strong .slide-corner-decoration__mask {
+  -webkit-mask-image: radial-gradient(circle at 100% 100%, #000 0%, transparent 48%);
+  mask-image: radial-gradient(circle at 100% 100%, #000 0%, transparent 48%);
+}
+
+.slide-corner-decoration--bottom-left.slide-corner-decoration--gradient-outward .slide-corner-decoration__mask {
+  -webkit-mask-image: radial-gradient(circle at 0% 100%, #000 0%, transparent 68%);
+  mask-image: radial-gradient(circle at 0% 100%, #000 0%, transparent 68%);
+}
+
+.slide-corner-decoration--bottom-left.slide-corner-decoration--gradient-soft .slide-corner-decoration__mask {
+  -webkit-mask-image: radial-gradient(circle at 0% 100%, #000 0%, transparent 85%);
+  mask-image: radial-gradient(circle at 0% 100%, #000 0%, transparent 85%);
+}
+
+.slide-corner-decoration--bottom-left.slide-corner-decoration--gradient-strong .slide-corner-decoration__mask {
+  -webkit-mask-image: radial-gradient(circle at 0% 100%, #000 0%, transparent 48%);
+  mask-image: radial-gradient(circle at 0% 100%, #000 0%, transparent 48%);
+}
+
+/* Optional: legacy diagonal linear fade (cornerGradient: linear) */
+.slide-corner-decoration--gradient-linear.slide-corner-decoration--top-right .slide-corner-decoration__mask {
+  -webkit-mask-image: linear-gradient(to bottom left, #000 0%, transparent 68%);
+  mask-image: linear-gradient(to bottom left, #000 0%, transparent 68%);
+}
+
+.slide-corner-decoration--gradient-linear.slide-corner-decoration--top-left .slide-corner-decoration__mask {
+  -webkit-mask-image: linear-gradient(to bottom right, #000 0%, transparent 68%);
+  mask-image: linear-gradient(to bottom right, #000 0%, transparent 68%);
+}
+
+.slide-corner-decoration--gradient-linear.slide-corner-decoration--bottom-right .slide-corner-decoration__mask {
+  -webkit-mask-image: linear-gradient(to top left, #000 0%, transparent 68%);
+  mask-image: linear-gradient(to top left, #000 0%, transparent 68%);
+}
+
+.slide-corner-decoration--gradient-linear.slide-corner-decoration--bottom-left .slide-corner-decoration__mask {
+  -webkit-mask-image: linear-gradient(to top right, #000 0%, transparent 68%);
+  mask-image: linear-gradient(to top right, #000 0%, transparent 68%);
+}
+
+/* `cornerGradientRadius:` / `cornerGradientLength:` — explicit circle radius (overrides preset soft/strong/outward/linear). */
+.slide-corner-decoration.slide-corner-decoration--custom-mask-radius .slide-corner-decoration__mask {
+  -webkit-mask-image: radial-gradient(
+    circle var(--slide-corner-mask-radius) at var(--slide-corner-mask-x) var(--slide-corner-mask-y),
+    #000 0%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    circle var(--slide-corner-mask-radius) at var(--slide-corner-mask-x) var(--slide-corner-mask-y),
+    #000 0%,
+    transparent 100%
+  );
+}
+
+.slide-corner-decoration__img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  margin: 0;
+}
+
+/* Pin bitmap to the physical corner (object-fit: contain otherwise centers in the quadrant box). */
+.slide-corner-decoration--top-right .slide-corner-decoration__img {
+  object-position: right top;
+}
+
+.slide-corner-decoration--top-left .slide-corner-decoration__img {
+  object-position: left top;
+}
+
+.slide-corner-decoration--bottom-right .slide-corner-decoration__img {
+  object-position: right bottom;
+}
+
+.slide-corner-decoration--bottom-left .slide-corner-decoration__img {
+  object-position: left bottom;
+}
+
+/* corner filters — `cornerAppearance:` in frontmatter → inline `filter` on `<img>` (supports multiple) */
 
 .slide-root--cover--fullbleed .slide-deck-header--cover {
   position: relative;
@@ -461,6 +749,37 @@
   line-height: var(--slide-line-height-body);
   color: var(--slide-text);
   text-align: left;
+}
+
+/* ==highlight== (remark-highlight-mark); `data-color-mode` set on `.slide-root` in SlidePresenter */
+.slide-mark {
+  padding: 0.06em 0.22em;
+  border-radius: 0.2em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Light slides: soft yellow (low chroma, reads as a gentle tint) */
+.slide-root[data-color-mode='light'] .slide-mark {
+  background: color-mix(in srgb, #fef08a 18%, #fffbeb);
+  color: var(--slide-text);
+}
+
+/* Dark slides: muted amber (mostly neutral, hint of warmth) */
+.slide-root[data-color-mode='dark'] .slide-mark {
+  background: color-mix(in srgb, #d97706 14%, #292524);
+  color: color-mix(in srgb, var(--slide-text) 94%, #fde68a 6%);
+}
+
+/* Speaker notes / other markdown without slide palette vars */
+.speaker-notes-md .slide-mark {
+  background: color-mix(in srgb, #fef08a 20%, #fffbeb);
+  color: inherit;
+}
+
+html.dark .speaker-notes-md .slide-mark {
+  background: color-mix(in srgb, #d97706 14%, #27272a);
+  color: inherit;
 }
 
 /* Whole-slide alignment (frontmatter: align: left | center | right) */
@@ -1135,6 +1454,12 @@
   border: none;
   border-top: 1px solid var(--slide-table-border);
   margin: 1.5rem 0;
+}
+
+/* === spacer — blank vertical breathing room */
+.slide-spacer {
+  height: 1.5rem;
+  flex-shrink: 0;
 }
 
 .slide-strong {
