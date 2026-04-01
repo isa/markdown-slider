@@ -99,29 +99,13 @@
   height: 0;
 }
 
-/* --- Layout: cover (title + faded subtitle bottom-left; body above) --- */
+/* --- Layout: cover (title + faded subtitle bottom-left; markdown body ignored) --- */
 .slide-root.slide-root--cover {
   height: 100%;
   min-height: 0;
   max-height: 100%;
-  gap: 1rem;
-}
-
-.slide-root.slide-root--cover .slide-deck-body--cover {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.slide-root.slide-root--cover .slide-deck-body--cover::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
+  gap: 0;
+  justify-content: flex-end;
 }
 
 .slide-deck-header--cover {
@@ -146,7 +130,7 @@
   line-height: 1.25;
 }
 
-/* Cover + frontmatter `backgroundImage:` — full-bleed photo behind body + title */
+/* Cover + frontmatter `backgroundImage:` — full-bleed photo behind title stack */
 .slide-root.slide-root--cover.slide-root--cover--fullbleed {
   position: relative;
   isolation: isolate;
@@ -181,17 +165,9 @@
   );
 }
 
-.slide-root--cover--fullbleed .slide-deck-body--cover,
 .slide-root--cover--fullbleed .slide-deck-header--cover {
   position: relative;
   z-index: 2;
-}
-
-.slide-root--cover--fullbleed .slide-deck-body--cover {
-  padding: 1.5rem 2rem 0.5rem;
-}
-
-.slide-root--cover--fullbleed .slide-deck-header--cover {
   padding: 0.75rem 2rem 1.5rem;
 }
 
@@ -1316,24 +1292,11 @@
   animation-delay: 0.27s;
 }
 
-/* Stagger: cover (body first, header last) */
-.slide-root--stagger.slide-prose.slide-root--cover > .slide-deck-body--cover > * {
-  animation: slide-fade-up 0.45s ease forwards;
-  opacity: 0;
-}
-.slide-root--stagger.slide-prose.slide-root--cover > .slide-deck-body--cover > *:nth-child(1) {
-  animation-delay: 0.05s;
-}
-.slide-root--stagger.slide-prose.slide-root--cover > .slide-deck-body--cover > *:nth-child(2) {
-  animation-delay: 0.12s;
-}
-.slide-root--stagger.slide-prose.slide-root--cover > .slide-deck-body--cover > *:nth-child(3) {
-  animation-delay: 0.19s;
-}
+/* Stagger: cover (title stack only) */
 .slide-root--stagger.slide-prose.slide-root--cover > .slide-deck-header--cover {
   animation: slide-fade-up 0.45s ease forwards;
   opacity: 0;
-  animation-delay: 0.26s;
+  animation-delay: 0.08s;
 }
 
 /* Stagger: image */

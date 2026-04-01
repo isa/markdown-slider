@@ -1,18 +1,66 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, RotateCcw, Sun, Moon, Plus, FolderOpen, Copy, Check, Presentation } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, Sun, Moon, Plus, FolderOpen, Copy, Check, Presentation, Pencil } from 'lucide-react';
+import { stringify as yamlStringify } from 'yaml';
 import { AnimatePresence, motion } from 'motion/react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { SlidePresenter } from './components/SlidePresenter';
 import { WorkingArea } from './components/WorkingArea';
 import { PresentationInkLayer } from './components/PresentationInkLayer';
-import { loadDecks, getDefaultDeckId, SlideData } from './slideLoader';
+import { loadDecks, getDefaultDeckId, SlideData, DeckMeta } from './slideLoader';
 import { getRegisteredThemeIds } from './slideThemes';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Card, CardContent } from './components/ui/card';
 import { Separator } from './components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './components/ui/dialog';
+import { Label } from './components/ui/label';
+import { cn } from './components/ui/utils';
+
+const DECK_META_OVERRIDES_KEY = 'markdown-slider:deck-meta-overrides';
+
+function loadDeckMetaOverrides(): Record<string, Partial<DeckMeta>> {
+  try {
+    const raw = localStorage.getItem(DECK_META_OVERRIDES_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, Partial<DeckMeta>>;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function mergeDeckMeta(base: DeckMeta, override: Partial<DeckMeta> | undefined): DeckMeta {
+  if (!override) return base;
+  const out = { ...base };
+  for (const [key, value] of Object.entries(override)) {
+    if (value === undefined) continue;
+    (out as Record<string, unknown>)[key] = value;
+  }
+  return out;
+}
+
+function buildMetadataYamlSnippet(meta: DeckMeta): string {
+  const doc: Record<string, unknown> = {
+    title: meta.title,
+  };
+  if (meta.subtitle !== undefined && meta.subtitle !== '') doc.subtitle = meta.subtitle;
+  if (meta.author) doc.author = meta.author;
+  if (meta.date) doc.date = meta.date;
+  if (meta.defaultTheme) doc.defaultTheme = meta.defaultTheme;
+  if (meta.description) doc.description = meta.description;
+  if (meta.tags?.length) doc.tags = meta.tags;
+  const body = yamlStringify(doc).trimEnd();
+  return `---\n${body}\n---\n`;
+}
 
 const decksCatalog = loadDecks();
 const themeOptions = getRegisteredThemeIds();
@@ -73,6 +121,16 @@ function App() {
   const [newDeckAuthor, setNewDeckAuthor] = useState('');
   const [newDeckTheme, setNewDeckTheme] = useState('default');
   const [copiedCreateCmd, setCopiedCreateCmd] = useState(false);
+  const [deckMetaOverrides, setDeckMetaOverrides] = useState<Record<string, Partial<DeckMeta>>>(loadDeckMetaOverrides);
+  const [deckMetaDialogOpen, setDeckMetaDialogOpen] = useState(false);
+  const [deckMetaForm, setDeckMetaForm] = useState({
+    title: '',
+    subtitle: '',
+    author: '',
+    date: '',
+    description: '',
+  });
+  const [copiedMetaYaml, setCopiedMetaYaml] = useState(false);
   const [presentationMode, setPresentationMode] = useState(false);
   const goToSlideInputRef = useRef<HTMLInputElement>(null);
   const presentationContainerRef = useRef<HTMLDivElement>(null);
@@ -81,10 +139,94 @@ function App() {
     () => decksCatalog.find((deck) => deck.id === activeDeckId) ?? null,
     [activeDeckId],
   );
+  const effectiveDeckMeta = useMemo(() => {
+    if (!activeDeck) return null;
+    return mergeDeckMeta(activeDeck.meta, deckMetaOverrides[activeDeck.id]);
+  }, [activeDeck, deckMetaOverrides]);
+
+  const selectedDeckMergedMeta = useMemo(() => {
+    if (!selectedDeckId) return null;
+    const deck = decksCatalog.find((d) => d.id === selectedDeckId);
+    if (!deck) return null;
+    return mergeDeckMeta(deck.meta, deckMetaOverrides[deck.id]);
+  }, [selectedDeckId, deckMetaOverrides]);
+
   const totalSlides = slidesData.length;
   const currentSlideData = slidesData[currentSlide];
   const hasWorkingArea = !!currentSlideData?.workingArea;
   const activeDeckDefaultTheme = activeDeck?.meta.defaultTheme;
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(DECK_META_OVERRIDES_KEY, JSON.stringify(deckMetaOverrides));
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }, [deckMetaOverrides]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDarkMode);
+  }, [isDarkMode]);
+
+  const openDeckMetaDialog = useCallback(() => {
+    if (!activeDeck) return;
+    const m = mergeDeckMeta(activeDeck.meta, deckMetaOverrides[activeDeck.id]);
+    setDeckMetaForm({
+      title: m.title,
+      subtitle: m.subtitle ?? '',
+      author: m.author ?? '',
+      date: m.date ?? '',
+      description: m.description ?? '',
+    });
+    setDeckMetaDialogOpen(true);
+  }, [activeDeck, deckMetaOverrides]);
+
+  const saveDeckMetaDialog = useCallback(() => {
+    if (!activeDeck) return;
+    setDeckMetaOverrides((prev) => ({
+      ...prev,
+      [activeDeck.id]: {
+        title: deckMetaForm.title.trim() || activeDeck.meta.title,
+        subtitle: deckMetaForm.subtitle.trim(),
+        author: deckMetaForm.author.trim() || '',
+        date: deckMetaForm.date.trim() || '',
+        description: deckMetaForm.description.trim() || '',
+      },
+    }));
+    setDeckMetaDialogOpen(false);
+  }, [activeDeck, deckMetaForm]);
+
+  const resetDeckMetaToFile = useCallback(() => {
+    if (!activeDeck) return;
+    setDeckMetaOverrides((prev) => {
+      const next = { ...prev };
+      delete next[activeDeck.id];
+      return next;
+    });
+    setDeckMetaDialogOpen(false);
+  }, [activeDeck]);
+
+  const copyDeckMetaYaml = useCallback(async () => {
+    if (!activeDeck) return;
+    const baseMerged = mergeDeckMeta(activeDeck.meta, deckMetaOverrides[activeDeck.id]);
+    const preview: DeckMeta = deckMetaDialogOpen
+      ? mergeDeckMeta(baseMerged, {
+          title: deckMetaForm.title.trim() || activeDeck.meta.title,
+          subtitle: deckMetaForm.subtitle.trim(),
+          author: deckMetaForm.author.trim() || '',
+          date: deckMetaForm.date.trim() || '',
+          description: deckMetaForm.description.trim() || '',
+        })
+      : baseMerged;
+    const text = buildMetadataYamlSnippet(preview);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedMetaYaml(true);
+      setTimeout(() => setCopiedMetaYaml(false), 2000);
+    } catch {
+      setCopiedMetaYaml(false);
+    }
+  }, [activeDeck, deckMetaDialogOpen, deckMetaForm, deckMetaOverrides]);
 
   const openDeck = useCallback((deckId: string) => {
     const deck = decksCatalog.find((d) => d.id === deckId);
@@ -255,6 +397,8 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (deckMetaDialogOpen) return;
+
       const target = e.target as HTMLElement;
       const tag = target?.tagName;
       const isGoToInput = target === goToSlideInputRef.current;
@@ -355,6 +499,7 @@ function App() {
     presentationMode,
     enterPresentation,
     exitPresentation,
+    deckMetaDialogOpen,
   ]);
 
   // State-colored border + glow (same logic in light and dark; base shadow only differs)
@@ -485,18 +630,18 @@ function App() {
                   </Select>
                   <div className="mt-2 text-xs space-y-1">
                     <p className={muted}>
-                      {decksCatalog.find((d) => d.id === selectedDeckId)?.meta.description ||
-                        'No description'}
+                      {selectedDeckMergedMeta?.description || 'No description'}
                     </p>
                     <p className={faint}>
                       Author:{' '}
-                      {decksCatalog.find((d) => d.id === selectedDeckId)?.meta.author || 'Unknown'}
+                      {selectedDeckMergedMeta?.author || 'Unknown'}
                     </p>
                   </div>
                   <Button
                     onClick={() => selectedDeckId && openDeck(selectedDeckId)}
                     disabled={!selectedDeckId}
-                    className="mt-5 h-10 inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white"
+                    size="lg"
+                    className="mt-5 gap-2"
                   >
                     <FolderOpen className="w-4 h-4" />
                     Open deck
@@ -640,21 +785,32 @@ function App() {
           </div>
         </div>
       ) : null}
-      {/* Outer container - the "device frame" */}
+      {/* Outer container - the "device frame" (fullscreen target: entire deck UI, not browser chrome) */}
       <div
+        ref={presentationContainerRef}
         className={`w-full h-full flex flex-col overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-zinc-900 border-zinc-800/60' : 'bg-white border-zinc-300'} ${presentationMode ? 'rounded-none border-0 shadow-none' : 'rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.3)] border'}`}
       >
         {/* Title bar */}
-        {!presentationMode ? (
         <div className="shrink-0 px-10 py-5 flex items-center justify-between">
-          <div className="w-20" />
-          <div className="text-center">
+          <div className="w-20 flex justify-start">
+            <button
+              type="button"
+              onClick={openDeckMetaDialog}
+              className={`p-2 rounded-full border transition-colors outline-none ${isDarkMode ? 'bg-zinc-800/70 border-zinc-600/50 hover:bg-zinc-700 text-white' : 'bg-white/70 border-zinc-300 hover:bg-zinc-200 text-zinc-700'}`}
+              title="Edit deck metadata"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="text-center flex-1 min-w-0 px-2">
             <h1 className={`text-2xl ${isDarkMode ? 'text-white' : 'text-zinc-800'}`} style={{ fontFamily: 'Georgia, serif' }}>
-              ✦ {activeDeck?.meta.title ?? 'Markdown Slides'} ✦
+              ✦ {effectiveDeckMeta?.title ?? 'Markdown Slides'} ✦
             </h1>
-            <p className={`text-xs tracking-widest uppercase mt-0.5 ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
-              ─── Deck Mode ───
-            </p>
+            {effectiveDeckMeta?.subtitle ? (
+              <p className={`text-xs tracking-widest uppercase mt-0.5 ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                ─── {effectiveDeckMeta.subtitle} ───
+              </p>
+            ) : null}
           </div>
           <div className="flex items-center gap-2 w-48 justify-end flex-wrap">
             <button
@@ -670,9 +826,12 @@ function App() {
             </button>
             <button
               type="button"
-              onClick={() => enterPresentation()}
+              onClick={() => {
+                if (presentationMode) void exitPresentation();
+                else enterPresentation();
+              }}
               className={`w-9 h-9 flex items-center justify-center rounded-full backdrop-blur-sm border transition-all duration-200 outline-none ${isDarkMode ? 'bg-zinc-800/70 border-zinc-600/50 hover:bg-zinc-700 text-white' : 'bg-violet-100 border-violet-300 text-violet-700 hover:bg-violet-200'}`}
-              title="Presentation mode (P)"
+              title={presentationMode ? 'Exit presentation (Esc or P)' : 'Presentation mode (P)'}
             >
               <Presentation className="w-4 h-4" />
             </button>
@@ -693,11 +852,9 @@ function App() {
             </button>
           </div>
         </div>
-        ) : null}
 
-        <div ref={presentationContainerRef} className="flex-1 min-h-0 flex flex-col relative min-h-0">
         {/* Inner content area - flips as a whole (perspective on flip layer only so slide nav stays flat / horizontal) */}
-        <div className={`flex-1 min-h-0 flex flex-col min-h-0 ${presentationMode ? 'px-0 pb-0 pt-0' : 'px-6 pb-6 pt-1'}`}>
+        <div className="flex-1 min-h-0 flex flex-col min-h-0 px-6 pb-6 pt-1 relative">
           <AnimatePresence mode="wait" initial={false}>
             {!showWorkingArea ? (
               <motion.div
@@ -706,7 +863,7 @@ function App() {
                 animate={{ rotateY: 0, opacity: 1 }}
                 exit={{ rotateY: 90, opacity: 0 }}
                 transition={{ duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
-                className={`w-full h-full flex items-center ${presentationMode ? 'gap-0' : 'gap-8 md:gap-10'}`}
+                className="w-full h-full flex items-center gap-8 md:gap-10"
                 style={{
                   transformPerspective: 1600,
                   transformStyle: 'preserve-3d',
@@ -714,7 +871,6 @@ function App() {
                 }}
               >
                 {/* Previous arrow */}
-                {!presentationMode ? (
                 <button
                   onClick={prevSlide}
                   disabled={currentSlide === 0}
@@ -722,12 +878,11 @@ function App() {
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                ) : null}
 
                 {/* Slide card */}
                 <div
-                  className={`flex-1 h-full min-h-0 relative overflow-hidden ${presentationMode ? 'rounded-none border-0 shadow-none' : `rounded-2xl border ${cardGlow.className}`}`}
-                  style={presentationMode ? undefined : cardGlow.style}
+                  className={`flex-1 h-full min-h-0 relative overflow-hidden rounded-2xl border ${cardGlow.className}`}
+                  style={cardGlow.style}
                 >
                   <SlidePresenter
                     slideContent={currentSlideData?.content ?? '# No content'}
@@ -743,7 +898,6 @@ function App() {
                 </div>
 
                 {/* Next arrow */}
-                {!presentationMode ? (
                 <button
                   onClick={nextSlide}
                   disabled={currentSlide === totalSlides - 1}
@@ -751,7 +905,6 @@ function App() {
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
-                ) : null}
               </motion.div>
             ) : (
               <motion.div
@@ -760,12 +913,12 @@ function App() {
                 animate={{ rotateY: 0, opacity: 1 }}
                 exit={{ rotateY: 90, opacity: 0 }}
                 transition={{ duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
-                className={`w-full h-full min-h-0 relative overflow-hidden ${presentationMode ? 'rounded-none border-0 shadow-none' : `rounded-2xl border ${cardGlow.className}`}`}
+                className={`w-full h-full min-h-0 relative overflow-hidden rounded-2xl border ${cardGlow.className}`}
                 style={{
                   transformPerspective: 1600,
                   transformStyle: 'preserve-3d',
                   backfaceVisibility: 'hidden',
-                  ...(presentationMode ? {} : cardGlow.style),
+                  ...cardGlow.style,
                 }}
               >
                 <WorkingArea
@@ -781,30 +934,48 @@ function App() {
             )}
           </AnimatePresence>
         </div>
-        </div>
 
         {/* Footer dots */}
-        {!presentationMode ? (
         <div className="shrink-0 pb-6 px-10 pt-1 flex items-center justify-between">
           <span className={`text-[10px] ${isDarkMode ? 'text-zinc-600' : 'text-zinc-400'}`}>← → nav · G go to · E source · Esc close · F flip · T theme · P present</span>
           <div className="flex items-center gap-3">
-            <button
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={addSlideAfterCurrent}
-              className={`h-7 px-2 rounded border text-xs inline-flex items-center gap-1 ${isDarkMode ? 'border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700' : 'border-zinc-300 bg-zinc-100 text-zinc-700 hover:bg-zinc-200'}`}
+              className={cn(
+                'h-7 min-h-7 gap-1 px-2 text-xs',
+                isDarkMode
+                  ? 'border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700 hover:text-zinc-100'
+                  : 'border-zinc-300 bg-zinc-100 text-zinc-700 hover:bg-zinc-200',
+              )}
               title="Add slide after current (session-only)"
             >
               <Plus className="w-3 h-3" />
               Add Slide
-            </button>
-            <button
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={addWorkingAreaToCurrent}
               disabled={hasWorkingArea}
-              className={`h-7 px-2 rounded border text-xs inline-flex items-center gap-1 disabled:opacity-50 disabled:pointer-events-none ${isDarkMode ? 'border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700' : 'border-zinc-300 bg-zinc-100 text-zinc-700 hover:bg-zinc-200'}`}
-              title={hasWorkingArea ? 'Working area already exists for this slide' : 'Add working area to current slide (session-only)'}
+              className={cn(
+                'h-7 min-h-7 gap-1 px-2 text-xs',
+                isDarkMode
+                  ? 'border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700 hover:text-zinc-100'
+                  : 'border-zinc-300 bg-zinc-100 text-zinc-700 hover:bg-zinc-200',
+              )}
+              title={
+                hasWorkingArea
+                  ? 'Working area already exists for this slide'
+                  : 'Add working area to current slide (session-only)'
+              }
             >
               <Plus className="w-3 h-3" />
               Add Working Area
-            </button>
+            </Button>
             <span className={`text-xs ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
               {currentSlide + 1} / {totalSlides}
             </span>
@@ -823,12 +994,183 @@ function App() {
             </div>
           </div>
           <span className={`text-[10px] ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
-            {activeDeck?.meta.author ? `☻ ${activeDeck.meta.author}` : '☻ Markdown Slider'}
-            {activeDeck?.meta.date ? ` · ◈ ${activeDeck.meta.date}` : ''}
+            {effectiveDeckMeta?.author ? `☻ ${effectiveDeckMeta.author}` : '☻ Markdown Slider'}
+            {effectiveDeckMeta?.date ? ` · ◈ ${effectiveDeckMeta.date}` : ''}
           </span>
         </div>
-        ) : null}
       </div>
+
+      <Dialog open={deckMetaDialogOpen} onOpenChange={setDeckMetaDialogOpen}>
+        <DialogContent
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            requestAnimationFrame(() => {
+              const el = document.getElementById('deck-meta-title') as HTMLInputElement | null;
+              if (!el) return;
+              el.focus();
+              const len = el.value.length;
+              el.setSelectionRange(len, len);
+            });
+          }}
+          className={cn(
+            'sm:max-w-md border shadow-lg',
+            isDarkMode
+              ? 'bg-zinc-900 border-zinc-600 text-zinc-100 [&>button]:text-zinc-400 [&>button]:hover:bg-zinc-800 [&>button]:hover:text-zinc-100'
+              : 'bg-white border-zinc-300 text-zinc-900 shadow-zinc-950/10 [&>button]:text-zinc-500 [&>button]:hover:bg-zinc-100 [&>button]:hover:text-zinc-900',
+          )}
+        >
+          <DialogHeader>
+            <DialogTitle className={isDarkMode ? 'text-zinc-100' : 'text-zinc-900'}>Deck metadata</DialogTitle>
+            <DialogDescription
+              className={cn('text-sm', isDarkMode ? 'text-zinc-400' : 'text-zinc-600')}
+            >
+              Title and subtitle appear in the header. Changes are saved in this browser; use Copy YAML to
+              update{' '}
+              <code
+                className={cn(
+                  'text-xs px-1 py-0.5 rounded',
+                  isDarkMode ? 'bg-zinc-800 text-zinc-200' : 'bg-zinc-100 text-zinc-800',
+                )}
+              >
+                decks/…/metadata.md
+              </code>{' '}
+              for the source of truth.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div className="grid gap-1.5">
+              <Label
+                htmlFor="deck-meta-title"
+                className={isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}
+              >
+                Title
+              </Label>
+              <Input
+                id="deck-meta-title"
+                value={deckMetaForm.title}
+                onChange={(e) => setDeckMetaForm((f) => ({ ...f, title: e.target.value }))}
+                className={cn(
+                  'h-10 min-h-10',
+                  isDarkMode
+                    ? 'bg-zinc-950 border-zinc-600 text-white placeholder:text-zinc-500 focus-visible:ring-amber-500/40'
+                    : 'bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-amber-500/50',
+                )}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label
+                htmlFor="deck-meta-subtitle"
+                className={isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}
+              >
+                Subtitle (header line)
+              </Label>
+              <Input
+                id="deck-meta-subtitle"
+                value={deckMetaForm.subtitle}
+                onChange={(e) => setDeckMetaForm((f) => ({ ...f, subtitle: e.target.value }))}
+                placeholder="e.g. DECK MODE"
+                className={cn(
+                  'h-10 min-h-10',
+                  isDarkMode
+                    ? 'bg-zinc-950 border-zinc-600 text-white placeholder:text-zinc-500 focus-visible:ring-amber-500/40'
+                    : 'bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-amber-500/50',
+                )}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label
+                htmlFor="deck-meta-author"
+                className={isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}
+              >
+                Author
+              </Label>
+              <Input
+                id="deck-meta-author"
+                value={deckMetaForm.author}
+                onChange={(e) => setDeckMetaForm((f) => ({ ...f, author: e.target.value }))}
+                className={cn(
+                  'h-10 min-h-10',
+                  isDarkMode
+                    ? 'bg-zinc-950 border-zinc-600 text-white placeholder:text-zinc-500 focus-visible:ring-amber-500/40'
+                    : 'bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-amber-500/50',
+                )}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label
+                htmlFor="deck-meta-date"
+                className={isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}
+              >
+                Date
+              </Label>
+              <Input
+                id="deck-meta-date"
+                value={deckMetaForm.date}
+                onChange={(e) => setDeckMetaForm((f) => ({ ...f, date: e.target.value }))}
+                placeholder="YYYY-MM-DD"
+                className={cn(
+                  'h-10 min-h-10',
+                  isDarkMode
+                    ? 'bg-zinc-950 border-zinc-600 text-white placeholder:text-zinc-500 focus-visible:ring-amber-500/40'
+                    : 'bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-amber-500/50',
+                )}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label
+                htmlFor="deck-meta-desc"
+                className={isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}
+              >
+                Description (deck picker)
+              </Label>
+              <textarea
+                id="deck-meta-desc"
+                rows={4}
+                value={deckMetaForm.description}
+                onChange={(e) => setDeckMetaForm((f) => ({ ...f, description: e.target.value }))}
+                className={cn(
+                  'min-h-28 w-full resize-y rounded-md border px-3 py-2.5 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-amber-500/50',
+                  isDarkMode
+                    ? 'bg-zinc-950 border-zinc-600 text-white placeholder:text-zinc-500'
+                    : 'bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400',
+                )}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2 flex-wrap sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={resetDeckMetaToFile}
+              className={cn(
+                isDarkMode
+                  ? 'border-zinc-600 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 hover:text-white'
+                  : 'border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-100',
+              )}
+            >
+              Reset to file
+            </Button>
+            <div className="flex flex-wrap gap-2 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void copyDeckMetaYaml()}
+                className={cn(
+                  isDarkMode
+                    ? 'border-zinc-600 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 hover:text-white'
+                    : 'border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-100',
+                )}
+              >
+                {copiedMetaYaml ? <Check className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
+                {copiedMetaYaml ? 'Copied' : 'Copy YAML'}
+              </Button>
+              <Button type="button" onClick={saveDeckMetaDialog}>
+                Save
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

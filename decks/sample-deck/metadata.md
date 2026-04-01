@@ -1,5 +1,6 @@
 ---
 title: Feature showcase
+subtitle: "DECK MODE"
 author: Markdown Slider
 date: 2026-04-01
 defaultTheme: default

@@ -61,6 +61,7 @@ function cmdCreate(args) {
   const id = String(args.id || '').trim();
   assertDeckId(id);
   const title = String(args.title || id).trim() || id;
+  const subtitle = String(args.subtitle || '').trim();
   const author = String(args.author || '').trim();
   const defaultTheme = String(args['default-theme'] || 'default').trim() || 'default';
   const date = String(args.date || new Date().toISOString().slice(0, 10)).trim();
@@ -72,6 +73,7 @@ function cmdCreate(args) {
   const metadata = [
     '---',
     `title: ${title}`,
+    ...(subtitle ? [`subtitle: ${subtitle}`] : []),
     ...(author ? [`author: ${author}`] : []),
     ...(date ? [`date: ${date}`] : []),
     `defaultTheme: ${defaultTheme}`,
@@ -165,7 +167,7 @@ function cmdImport(args) {
 
 function printUsage() {
   console.log(`Usage:
-  bun run deck:create --id <deck-id> --title <title> [--author <author>] [--default-theme <theme>] [--date YYYY-MM-DD]
+  bun run deck:create --id <deck-id> --title <title> [--subtitle <text>] [--author <author>] [--default-theme <theme>] [--date YYYY-MM-DD]
   bun run deck:export --id <deck-id> [--out ./deck.zip]
   bun run deck:import --zip ./deck.zip [--id <override-id>]
 `);

@@ -16,7 +16,7 @@ bun install
 |--------|-------------|
 | `bun run dev` | Start the Vite dev server |
 | `bun run build` | Production build to `dist/` |
-| `bun run deck:create --id deck01 --title "Deck 01"` | Scaffold a new deck |
+| `bun run deck:create --id deck01 --title "Deck 01" [--subtitle "…"]` | Scaffold a new deck |
 | `bun run deck:export --id deck01 --out ./deck01.zip` | Export one deck to zip |
 | `bun run deck:import --zip ./deck01.zip` | Import deck zip into `decks/` |
 
@@ -58,6 +58,7 @@ markdown-slider/
 ```yaml
 ---
 title: Team Update
+subtitle: DECK MODE
 author: Jane Doe
 date: 2026-03-31
 defaultTheme: default
@@ -68,7 +69,9 @@ tags:
 ---
 ```
 
-`defaultTheme` is applied when a slide omits `theme` in its frontmatter.
+`subtitle` is the small line under the deck title in the app header (deck mode). `defaultTheme` is applied when a slide omits `theme` in its frontmatter.
+
+While viewing a deck, use **Edit deck metadata** (pencil in the header) to change title, subtitle, and related fields; those edits are stored in the browser. Use **Copy YAML** there to paste into `metadata.md` if you want the repo file to match.
 
 ### Working area
 
@@ -98,6 +101,18 @@ theme: fiery-ocean
 
 If `theme` is missing on a slide, deck `defaultTheme` is used, then fallback `default`.
 
+### Slide layouts (`layout:` in frontmatter)
+
+| `layout` | What you see |
+|----------|----------------|
+| `content` | *(default)* Header with `title` and optional `subtitle`; markdown body scrolls below. |
+| `cover` | **Only** frontmatter `title` and `subtitle` (and optional `backgroundImage:` for full-bleed). Text after the closing `---` is **not rendered**—put all visible copy in YAML. |
+| `infographic` | Strong header with `title` only (`subtitle` hidden); body for compact KPIs or one diagram. |
+| `image` | Centered figure from a markdown image in the body; optional `caption`, `imageWidth`, `imageHeight` in frontmatter. |
+| `quote` | Quote body (e.g. blockquote); `subtitle` works well as attribution. |
+
+Examples: `decks/sample-deck/slide05` (content), `slide07` / `slide51` (cover), `slide06` (infographic), `slide08` (image), `slide59` (quote).
+
 ---
 
 ## Import / Export
@@ -105,7 +120,7 @@ If `theme` is missing on a slide, deck `defaultTheme` is used, then fallback `de
 - Create a deck with one starter slide:
 
   ```bash
-  bun run deck:create --id deck01 --title "Deck 01" --author "You" --default-theme default
+  bun run deck:create --id deck01 --title "Deck 01" --subtitle "Optional tagline" --author "You" --default-theme default
   ```
 
 - Export a deck:
@@ -126,13 +141,15 @@ Deck id collisions are auto-resolved by suffixing (`-2`, `-3`, ...).
 
 ## UI overview
 
-- **Deck picker first screen**: open existing deck or generate a creation command.
-- **Navigation**: side arrows, footer dots, and keyboard shortcuts.
-- **Theme toggle**: sun/moon switches light vs dark mode.
-- **Flip**: switches to working area when available.
-- **Add Slide**: inserts a new slide immediately after current slide (session-only).
-- **Add Working Area**: adds a working area to the current slide (session-only).
-- **Per-slide source**: code button edits raw `slide.md` / `slide.html` in-memory.
+- **Deck picker**: choose a deck from the list and **Open deck**, or fill **Create new deck** and copy the generated `deck:create` command. Primary actions use the app design tokens (`src/styles/theme.css`); light/dark mode toggles both the chrome and the document `dark` class so colors stay consistent.
+- **Navigation**: side arrows, footer dots, and keyboard shortcuts (see footer hint).
+- **Theme toggle (T)**: sun/moon switches light vs dark mode for the shell.
+- **Flip (F)**: switches to working area when available.
+- **Add Slide** / **Add Working Area**: footer buttons (session-only); they use the shared shadcn `Button` styling with the same outline treatment as other chrome controls.
+- **Per-slide source (E)**: code button edits raw `slide.md` / `slide.html` in-memory.
+- **Presentation (P)**: fullscreen slide view; **Esc** exits.
+- **Go to slide (G)**: jump by slide number.
+- **Edit deck metadata**: pencil in the header opens the dialog (browser-stored overrides; see **Deck metadata** above).
 
 ---
 

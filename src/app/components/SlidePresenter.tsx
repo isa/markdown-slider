@@ -230,19 +230,6 @@ export function SlidePresenter({
                     <div className="slide-cover-bg-overlay" aria-hidden />
                   </>
                 ) : null}
-                <div className="slide-deck-body slide-deck-body--cover">
-                  <SlideMarkdown
-                    markdown={body}
-                    lineChartData={lineChart}
-                    barChartData={barChart}
-                    pieChartData={pieChart}
-                    pieChartLegendPosition={pieChartLegendPosition}
-                    barChartStacked={barChartStacked}
-                    lineChartArea={lineChartArea}
-                    lineChartEndMarker={lineChartEndMarker}
-                    mermaidNodes={mermaidNodes}
-                  />
-                </div>
                 {title ? (
                   <header className="slide-deck-header slide-deck-header--cover">
                     <div className="slide-deck-header__row slide-deck-header__row--cover">

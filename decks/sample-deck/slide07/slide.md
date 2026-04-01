@@ -1,9 +1,7 @@
 ---
 layout: cover
 title: Layout — cover (no photo)
-subtitle: Title stack at the bottom; body is centered above
+subtitle: Title stack at the bottom — body markdown is ignored
 ---
 
-**Cover** without `backgroundImage:` uses the normal card surface — good for section breaks.
-
-The YAML `subtitle` is styled with reduced opacity.
+<!-- Cover slides only show title/subtitle from YAML; this body is not displayed. -->

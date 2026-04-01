@@ -16,6 +16,8 @@ export interface SlideData {
 export interface DeckMeta {
   id: string;
   title: string;
+  /** Shown under the deck title in the app chrome (deck mode), not slide frontmatter. */
+  subtitle?: string;
   author?: string;
   date?: string;
   defaultTheme?: string;
@@ -97,6 +99,8 @@ function parseDeckMeta(deckId: string): DeckMeta {
   const parsed = matter(raw);
   const data = parsed.data as Record<string, unknown>;
   const title = typeof data.title === 'string' && data.title.trim() ? data.title.trim() : deckId;
+  const subtitle =
+    typeof data.subtitle === 'string' && data.subtitle.trim() ? data.subtitle.trim() : undefined;
   const author = typeof data.author === 'string' && data.author.trim() ? data.author.trim() : undefined;
   const date = typeof data.date === 'string' && data.date.trim() ? data.date.trim() : undefined;
   const defaultTheme =
@@ -108,6 +112,7 @@ function parseDeckMeta(deckId: string): DeckMeta {
   return {
     id: deckId,
     title,
+    subtitle,
     author,
     date,
     defaultTheme,
