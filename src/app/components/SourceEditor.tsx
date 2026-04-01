@@ -10,7 +10,7 @@ interface SourceEditorProps {
   isDarkMode?: boolean;
 }
 
-export function SourceEditor({ value, onChange, onClose, language, isDarkMode = true }: SourceEditorProps) {
+export function SourceEditor({ value, onChange, onClose, language, isDarkMode = false }: SourceEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {

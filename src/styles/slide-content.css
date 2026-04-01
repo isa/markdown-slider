@@ -1138,8 +1138,18 @@
   column-gap: 0;
 }
 
+/*
+ * Ruled columns mirror the deck picker: [column] — gap — 1px rule — gap — [column] …
+ * (same idea as App.tsx: grid + Separator + gap-10 md:gap-12).
+ */
 .slide-columns--ruled {
-  gap: 0;
+  column-gap: 2.5rem;
+}
+
+@media (min-width: 768px) {
+  .slide-columns--ruled {
+    column-gap: 3rem;
+  }
 }
 
 .slide-columns--2 {
@@ -1154,22 +1164,31 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.slide-columns--2.slide-columns--ruled {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.slide-columns--3.slide-columns--ruled {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.slide-columns--4.slide-columns--ruled {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.slide-columns__rule {
+  width: 1px;
+  min-width: 1px;
+  align-self: stretch;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background-color: var(--slide-table-border);
+}
+
 .slide-columns__cell {
   min-width: 0;
-  padding: 0 1rem;
-}
-
-.slide-columns--ruled .slide-columns__cell {
-  border-left: 1px solid color-mix(in srgb, var(--slide-table-border) 45%, transparent);
-}
-
-.slide-columns--ruled .slide-columns__cell:first-child {
-  border-left: none;
-  padding-left: 0;
-}
-
-.slide-columns--ruled .slide-columns__cell:last-child {
-  padding-right: 0;
+  padding: 0;
 }
 
 /* Raw HTML inside column / animate blocks (markdown does not parse inside HTML blocks) */
@@ -1203,6 +1222,22 @@
   .slide-columns--3,
   .slide-columns--4 {
     grid-template-columns: 1fr;
+  }
+
+  .slide-columns--2.slide-columns--ruled,
+  .slide-columns--3.slide-columns--ruled,
+  .slide-columns--4.slide-columns--ruled {
+    grid-template-columns: 1fr;
+  }
+
+  .slide-columns--ruled .slide-columns__rule {
+    display: none;
+  }
+
+  .slide-columns--ruled .slide-columns__cell:not(:first-child) {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--slide-table-border);
   }
 }
 

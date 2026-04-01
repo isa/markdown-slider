@@ -209,7 +209,7 @@ function normalizeDeckThemeDefaults(
 
 export function parseSlideMarkdown(
   raw: string,
-  isDarkMode = true,
+  isDarkMode = false,
   deckThemeDefaults?: DeckSlideThemeDefaults | string,
 ): {
   body: string;

@@ -27,7 +27,7 @@ export function SlidePresenter({
   slideType,
   currentSlide,
   deckThemeDefaults,
-  isDarkMode = true,
+  isDarkMode = false,
   presentationMode = false,
   onContentChange,
   onSourceToggle,

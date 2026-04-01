@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -304,19 +304,24 @@ function ColumnGrid({
   return (
     <div className={`slide-columns slide-columns--${n} slide-columns--ruled`}>
       {cells.map((cell, i) => (
-        <div key={i} className="slide-columns__cell">
-          <SlideMarkdownBody
-            markdown={cell}
-            lineChartData={lineChartData}
-            barChartData={barChartData}
-            pieChartData={pieChartData}
-            pieChartLegendPosition={pieChartLegendPosition}
-            barChartStacked={barChartStacked}
-            lineChartArea={lineChartArea}
-            lineChartEndMarker={lineChartEndMarker}
-            mermaidNodes={mermaidNodes}
-          />
-        </div>
+        <Fragment key={i}>
+          <div className="slide-columns__cell">
+            <SlideMarkdownBody
+              markdown={cell}
+              lineChartData={lineChartData}
+              barChartData={barChartData}
+              pieChartData={pieChartData}
+              pieChartLegendPosition={pieChartLegendPosition}
+              barChartStacked={barChartStacked}
+              lineChartArea={lineChartArea}
+              lineChartEndMarker={lineChartEndMarker}
+              mermaidNodes={mermaidNodes}
+            />
+          </div>
+          {i < cells.length - 1 ? (
+            <div className="slide-columns__rule" role="presentation" aria-hidden />
+          ) : null}
+        </Fragment>
       ))}
     </div>
   );

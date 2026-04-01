@@ -43,7 +43,7 @@ function injectIframeTheme(html: string, isDark: boolean): string {
 export function WorkingArea({
   htmlContent,
   workingAreaType,
-  isDarkMode = true,
+  isDarkMode = false,
   presentationMode = false,
   onContentChange,
   onSourceToggle,

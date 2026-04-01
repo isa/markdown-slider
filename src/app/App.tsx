@@ -8,7 +8,7 @@ import { SlidePresenter } from './components/SlidePresenter';
 import { WorkingArea } from './components/WorkingArea';
 import { PresentationInkLayer } from './components/PresentationInkLayer';
 import { loadDecks, getDefaultDeckId, SlideData, DeckMeta } from './slideLoader';
-import { getRegisteredFontIds, getRegisteredPaletteIds, type DeckSlideThemeDefaults } from './slideThemes';
+import { getRegisteredFontIds, getRegisteredPaletteIds, getRegisteredThemeIds, type DeckSlideThemeDefaults } from './slideThemes';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Card, CardContent } from './components/ui/card';
@@ -67,6 +67,7 @@ function buildMetadataYamlSnippet(meta: DeckMeta): string {
 const decksCatalog = loadDecks();
 const paletteOptions = getRegisteredPaletteIds();
 const fontOptions = getRegisteredFontIds();
+const themeOptions = getRegisteredThemeIds();
 const deckFromUrl = new URLSearchParams(window.location.search).get('deck');
 const initialDeckId =
   (deckFromUrl && decksCatalog.some((d) => d.id === deckFromUrl) && deckFromUrl) ||
@@ -114,7 +115,7 @@ function App() {
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showWorkingArea, setShowWorkingArea] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [slidesData, setSlidesData] = useState<SlideData[]>([]);
   const [slideSourceOpen, setSlideSourceOpen] = useState(false);
   const [workingSourceOpen, setWorkingSourceOpen] = useState(false);
@@ -133,6 +134,9 @@ function App() {
     author: '',
     date: '',
     description: '',
+    defaultTheme: '',
+    defaultPalette: '',
+    defaultFont: '',
   });
   const [copiedMetaYaml, setCopiedMetaYaml] = useState(false);
   const [presentationMode, setPresentationMode] = useState(false);
@@ -154,6 +158,13 @@ function App() {
     if (!deck) return null;
     return mergeDeckMeta(deck.meta, deckMetaOverrides[deck.id]);
   }, [selectedDeckId, deckMetaOverrides]);
+
+  /** Hide scaffold placeholder `New deck`; show real descriptions as italic + justified. */
+  const openDeckDescriptionPreview = useMemo(() => {
+    const raw = selectedDeckMergedMeta?.description?.trim() ?? '';
+    if (!raw || raw.toLowerCase() === 'new deck') return null;
+    return raw;
+  }, [selectedDeckMergedMeta]);
 
   const totalSlides = slidesData.length;
   const currentSlideData = slidesData[currentSlide];
@@ -187,8 +198,11 @@ function App() {
       title: m.title,
       subtitle: m.subtitle ?? '',
       author: m.author ?? '',
-      date: m.date ?? '',
+      date: m.date || new Date().toISOString().slice(0, 10),
       description: m.description ?? '',
+      defaultTheme: m.defaultTheme ?? '',
+      defaultPalette: m.defaultPalette ?? '',
+      defaultFont: m.defaultFont ?? '',
     });
     setDeckMetaDialogOpen(true);
   }, [activeDeck, deckMetaOverrides]);
@@ -203,6 +217,9 @@ function App() {
         author: deckMetaForm.author.trim() || '',
         date: deckMetaForm.date.trim() || '',
         description: deckMetaForm.description.trim() || '',
+        defaultTheme: deckMetaForm.defaultTheme.trim() || '',
+        defaultPalette: deckMetaForm.defaultPalette.trim() || '',
+        defaultFont: deckMetaForm.defaultFont.trim() || '',
       },
     }));
     setDeckMetaDialogOpen(false);
@@ -623,7 +640,7 @@ function App() {
           </div>
 
           <CardContent className="mt-10 min-w-0 px-0 pb-0">
-            <div className="grid min-w-0 gap-10 md:gap-12 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start">
+            <div className="grid min-w-0 gap-10 md:gap-12 md:grid-cols-[minmax(0,0.58fr)_auto_minmax(0,1.42fr)] items-start">
               <section className="min-w-0 max-w-full">
               <h2 className={`text-sm uppercase tracking-wide mb-2 ${faint}`}>Open deck</h2>
               {decksCatalog.length ? (
@@ -643,24 +660,30 @@ function App() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <div className="mt-2 text-xs space-y-1">
-                    <p className={muted}>
-                      {selectedDeckMergedMeta?.description || 'No description'}
-                    </p>
-                    <p className={faint}>
+                  <div className="mt-2 text-xs">
+                    {openDeckDescriptionPreview ? (
+                      <p
+                        className={`${muted} italic text-justify leading-relaxed mt-3 mb-1.5`}
+                      >
+                        {openDeckDescriptionPreview}
+                      </p>
+                    ) : null}
+                    <p className={`${faint} text-right`}>
                       Author:{' '}
                       {selectedDeckMergedMeta?.author || 'Unknown'}
                     </p>
                   </div>
-                  <Button
-                    onClick={() => selectedDeckId && openDeck(selectedDeckId)}
-                    disabled={!selectedDeckId}
-                    size="lg"
-                    className="mt-5 gap-2"
-                  >
-                    <FolderOpen className="w-4 h-4" />
-                    Open deck
-                  </Button>
+                  <div className="mt-5 flex justify-end">
+                    <Button
+                      onClick={() => selectedDeckId && openDeck(selectedDeckId)}
+                      disabled={!selectedDeckId}
+                      size="lg"
+                      className="gap-2"
+                    >
+                      <FolderOpen className="w-4 h-4" />
+                      Open deck
+                    </Button>
+                  </div>
                 </>
               ) : (
                 <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
@@ -740,7 +763,7 @@ function App() {
                   </Button>
                 </div>
                 <div
-                  className={`rounded-lg border max-w-full min-w-0 overflow-x-auto ${isDarkMode ? 'border-zinc-600' : 'border-zinc-300'}`}
+                  className={`rounded-lg border max-w-full min-w-0 overflow-hidden ${isDarkMode ? 'border-zinc-600' : 'border-zinc-300'}`}
                 >
                   <SyntaxHighlighter
                     language="bash"
@@ -752,10 +775,16 @@ function App() {
                       lineHeight: 1.45,
                       background: isDarkMode ? '#09090b' : '#f4f4f5',
                       minWidth: 0,
+                      whiteSpace: 'pre-wrap',
+                      overflowWrap: 'anywhere',
+                      wordBreak: 'break-word',
                     }}
                     codeTagProps={{
                       style: {
                         color: isDarkMode ? '#e4e4e7' : '#18181b',
+                        whiteSpace: 'pre-wrap',
+                        overflowWrap: 'anywhere',
+                        wordBreak: 'break-word',
                       },
                     }}
                   >
@@ -1043,14 +1072,14 @@ function App() {
             });
           }}
           className={cn(
-            'sm:max-w-md border shadow-lg',
+            'sm:max-w-4xl border shadow-lg',
             isDarkMode
               ? 'bg-zinc-900 border-zinc-600 text-zinc-100 [&>button]:text-zinc-400 [&>button]:hover:bg-zinc-800 [&>button]:hover:text-zinc-100'
               : 'bg-white border-zinc-300 text-zinc-900 shadow-zinc-950/10 [&>button]:text-zinc-500 [&>button]:hover:bg-zinc-100 [&>button]:hover:text-zinc-900',
           )}
         >
           <DialogHeader>
-            <DialogTitle className={isDarkMode ? 'text-zinc-100' : 'text-zinc-900'}>Deck metadata</DialogTitle>
+            <DialogTitle className={isDarkMode ? 'text-zinc-100' : 'text-zinc-900'}>Deck Settings</DialogTitle>
             <DialogDescription
               className={cn('text-sm', isDarkMode ? 'text-zinc-400' : 'text-zinc-600')}
             >
@@ -1067,104 +1096,189 @@ function App() {
               for the source of truth.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3 py-2">
-            <div className="grid gap-1.5">
-              <Label
-                htmlFor="deck-meta-title"
-                className={isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}
-              >
-                Title
-              </Label>
-              <Input
-                id="deck-meta-title"
-                value={deckMetaForm.title}
-                onChange={(e) => setDeckMetaForm((f) => ({ ...f, title: e.target.value }))}
-                className={cn(
-                  'h-10 min-h-10',
-                  isDarkMode
-                    ? 'bg-zinc-950 border-zinc-600 text-white placeholder:text-zinc-500 focus-visible:ring-amber-500/40'
-                    : 'bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-amber-500/50',
-                )}
-              />
+          <div className="grid grid-cols-[minmax(0,0.8fr)_auto_minmax(0,1.2fr)] gap-x-6 items-start py-2">
+            {/* Left column — identity */}
+            <div className="grid gap-3">
+              <h3 className={cn('text-xs uppercase tracking-wide', isDarkMode ? 'text-zinc-500' : 'text-zinc-400')}>
+                Identity
+              </h3>
+              <div className="grid gap-1.5">
+                <Label htmlFor="deck-meta-title" className={isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}>
+                  Title
+                </Label>
+                <Input
+                  id="deck-meta-title"
+                  value={deckMetaForm.title}
+                  onChange={(e) => setDeckMetaForm((f) => ({ ...f, title: e.target.value }))}
+                  className={cn(
+                    'h-10 min-h-10',
+                    isDarkMode
+                      ? 'bg-zinc-950 border-zinc-600 text-white placeholder:text-zinc-500 focus-visible:ring-amber-500/40'
+                      : 'bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-amber-500/50',
+                  )}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="deck-meta-subtitle" className={isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}>
+                  Subtitle (Header Line)
+                </Label>
+                <Input
+                  id="deck-meta-subtitle"
+                  value={deckMetaForm.subtitle}
+                  onChange={(e) => setDeckMetaForm((f) => ({ ...f, subtitle: e.target.value }))}
+                  placeholder="e.g. DECK MODE"
+                  className={cn(
+                    'h-10 min-h-10',
+                    isDarkMode
+                      ? 'bg-zinc-950 border-zinc-600 text-white placeholder:text-zinc-500 focus-visible:ring-amber-500/40'
+                      : 'bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-amber-500/50',
+                  )}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="deck-meta-author" className={isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}>
+                  Author
+                </Label>
+                <Input
+                  id="deck-meta-author"
+                  value={deckMetaForm.author}
+                  onChange={(e) => setDeckMetaForm((f) => ({ ...f, author: e.target.value }))}
+                  className={cn(
+                    'h-10 min-h-10',
+                    isDarkMode
+                      ? 'bg-zinc-950 border-zinc-600 text-white placeholder:text-zinc-500 focus-visible:ring-amber-500/40'
+                      : 'bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-amber-500/50',
+                  )}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="deck-meta-date" className={isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}>
+                  Date
+                </Label>
+                <Input
+                  id="deck-meta-date"
+                  value={deckMetaForm.date}
+                  onChange={(e) => setDeckMetaForm((f) => ({ ...f, date: e.target.value }))}
+                  placeholder="YYYY-MM-DD"
+                  className={cn(
+                    'h-10 min-h-10',
+                    isDarkMode
+                      ? 'bg-zinc-950 border-zinc-600 text-white placeholder:text-zinc-500 focus-visible:ring-amber-500/40'
+                      : 'bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-amber-500/50',
+                  )}
+                />
+              </div>
             </div>
-            <div className="grid gap-1.5">
-              <Label
-                htmlFor="deck-meta-subtitle"
-                className={isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}
-              >
-                Subtitle (header line)
-              </Label>
-              <Input
-                id="deck-meta-subtitle"
-                value={deckMetaForm.subtitle}
-                onChange={(e) => setDeckMetaForm((f) => ({ ...f, subtitle: e.target.value }))}
-                placeholder="e.g. DECK MODE"
-                className={cn(
-                  'h-10 min-h-10',
-                  isDarkMode
-                    ? 'bg-zinc-950 border-zinc-600 text-white placeholder:text-zinc-500 focus-visible:ring-amber-500/40'
-                    : 'bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-amber-500/50',
-                )}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label
-                htmlFor="deck-meta-author"
-                className={isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}
-              >
-                Author
-              </Label>
-              <Input
-                id="deck-meta-author"
-                value={deckMetaForm.author}
-                onChange={(e) => setDeckMetaForm((f) => ({ ...f, author: e.target.value }))}
-                className={cn(
-                  'h-10 min-h-10',
-                  isDarkMode
-                    ? 'bg-zinc-950 border-zinc-600 text-white placeholder:text-zinc-500 focus-visible:ring-amber-500/40'
-                    : 'bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-amber-500/50',
-                )}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label
-                htmlFor="deck-meta-date"
-                className={isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}
-              >
-                Date
-              </Label>
-              <Input
-                id="deck-meta-date"
-                value={deckMetaForm.date}
-                onChange={(e) => setDeckMetaForm((f) => ({ ...f, date: e.target.value }))}
-                placeholder="YYYY-MM-DD"
-                className={cn(
-                  'h-10 min-h-10',
-                  isDarkMode
-                    ? 'bg-zinc-950 border-zinc-600 text-white placeholder:text-zinc-500 focus-visible:ring-amber-500/40'
-                    : 'bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-amber-500/50',
-                )}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label
-                htmlFor="deck-meta-desc"
-                className={isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}
-              >
-                Description (deck picker)
-              </Label>
-              <textarea
-                id="deck-meta-desc"
-                rows={4}
-                value={deckMetaForm.description}
-                onChange={(e) => setDeckMetaForm((f) => ({ ...f, description: e.target.value }))}
-                className={cn(
-                  'min-h-28 w-full resize-y rounded-md border px-3 py-2.5 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-amber-500/50',
-                  isDarkMode
-                    ? 'bg-zinc-950 border-zinc-600 text-white placeholder:text-zinc-500'
-                    : 'bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400',
-                )}
-              />
+
+            {/* Separator */}
+            <Separator
+              orientation="vertical"
+              className={cn('self-stretch', isDarkMode ? 'bg-zinc-700' : 'bg-zinc-200')}
+            />
+
+            {/* Right column — description + appearance defaults */}
+            <div className="grid gap-3">
+              <h3 className={cn('text-xs uppercase tracking-wide', isDarkMode ? 'text-zinc-500' : 'text-zinc-400')}>
+                Description
+              </h3>
+              <div className="grid gap-1.5">
+                <Label htmlFor="deck-meta-desc" className={isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}>
+                  Description (Deck Picker)
+                </Label>
+                <textarea
+                  id="deck-meta-desc"
+                  rows={4}
+                  value={deckMetaForm.description}
+                  onChange={(e) => setDeckMetaForm((f) => ({ ...f, description: e.target.value }))}
+                  className={cn(
+                    'min-h-28 w-full resize-y rounded-md border px-3 py-2.5 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-amber-500/50',
+                    isDarkMode
+                      ? 'bg-zinc-950 border-zinc-600 text-white placeholder:text-zinc-500'
+                      : 'bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400',
+                  )}
+                />
+              </div>
+              <h3 className={cn('text-xs uppercase tracking-wide mt-1', isDarkMode ? 'text-zinc-500' : 'text-zinc-400')}>
+                Appearance Defaults
+              </h3>
+              <div className="grid gap-1.5">
+                <Label className={isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}>Default Theme</Label>
+                <Select
+                  value={deckMetaForm.defaultTheme || '__none__'}
+                  onValueChange={(v) => setDeckMetaForm((f) => ({ ...f, defaultTheme: v === '__none__' ? '' : v }))}
+                >
+                  <SelectTrigger
+                    className={cn(
+                      'h-10 w-full',
+                      isDarkMode
+                        ? 'bg-zinc-950 border-zinc-600 text-white'
+                        : 'bg-white border-zinc-300 text-zinc-900',
+                    )}
+                  >
+                    <SelectValue placeholder="Inherit from slide" />
+                  </SelectTrigger>
+                  <SelectContent className={isDarkMode ? 'bg-zinc-900 border-zinc-700 text-zinc-100' : ''}>
+                    <SelectItem value="__none__">
+                      <span className={isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}>None (use palette &amp; font)</span>
+                    </SelectItem>
+                    {themeOptions.map((id) => (
+                      <SelectItem key={id} value={id}>{id}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label className={isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}>Default Palette</Label>
+                <Select
+                  value={deckMetaForm.defaultPalette || '__none__'}
+                  onValueChange={(v) => setDeckMetaForm((f) => ({ ...f, defaultPalette: v === '__none__' ? '' : v }))}
+                >
+                  <SelectTrigger
+                    className={cn(
+                      'h-10 w-full',
+                      isDarkMode
+                        ? 'bg-zinc-950 border-zinc-600 text-white'
+                        : 'bg-white border-zinc-300 text-zinc-900',
+                    )}
+                  >
+                    <SelectValue placeholder="Inherit" />
+                  </SelectTrigger>
+                  <SelectContent className={isDarkMode ? 'bg-zinc-900 border-zinc-700 text-zinc-100' : ''}>
+                    <SelectItem value="__none__">
+                      <span className={isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}>None</span>
+                    </SelectItem>
+                    {paletteOptions.map((id) => (
+                      <SelectItem key={id} value={id}>{id}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label className={isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}>Default Font</Label>
+                <Select
+                  value={deckMetaForm.defaultFont || '__none__'}
+                  onValueChange={(v) => setDeckMetaForm((f) => ({ ...f, defaultFont: v === '__none__' ? '' : v }))}
+                >
+                  <SelectTrigger
+                    className={cn(
+                      'h-10 w-full',
+                      isDarkMode
+                        ? 'bg-zinc-950 border-zinc-600 text-white'
+                        : 'bg-white border-zinc-300 text-zinc-900',
+                    )}
+                  >
+                    <SelectValue placeholder="Inherit" />
+                  </SelectTrigger>
+                  <SelectContent className={isDarkMode ? 'bg-zinc-900 border-zinc-700 text-zinc-100' : ''}>
+                    <SelectItem value="__none__">
+                      <span className={isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}>None</span>
+                    </SelectItem>
+                    {fontOptions.map((id) => (
+                      <SelectItem key={id} value={id}>{id}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-2 flex-wrap sm:justify-between">
