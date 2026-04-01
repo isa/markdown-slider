@@ -102,6 +102,18 @@ function toStringArray(v: unknown): string[] | undefined {
   return out.length ? out : undefined;
 }
 
+/** YAML parsers turn `date: 2026-04-01` into a Date, not a string. */
+function coerceDeckMetaDate(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    const t = value.trim();
+    return t || undefined;
+  }
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10);
+  }
+  return undefined;
+}
+
 function parseDeckMeta(deckId: string): DeckMeta {
   const raw = deckMetaFiles[`/decks/${deckId}/metadata.md`];
   if (!raw) {
@@ -113,7 +125,7 @@ function parseDeckMeta(deckId: string): DeckMeta {
   const subtitle =
     typeof data.subtitle === 'string' && data.subtitle.trim() ? data.subtitle.trim() : undefined;
   const author = typeof data.author === 'string' && data.author.trim() ? data.author.trim() : undefined;
-  const date = typeof data.date === 'string' && data.date.trim() ? data.date.trim() : undefined;
+  const date = coerceDeckMetaDate(data.date);
   const defaultTheme =
     typeof data.defaultTheme === 'string' && data.defaultTheme.trim()
       ? data.defaultTheme.trim()

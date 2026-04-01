@@ -1,6 +1,20 @@
-# Markdown Slides
+# Markdown Slider
 
 A Vite + React presentation app for markdown and HTML slides with theme packs, charts (Recharts), Mermaid diagrams, multi-column layouts, and optional per-slide working areas.
+
+## Screenshots
+
+Deck selector (light mode):
+
+![Deck selector screen](docs/readme/deck-selector.png)
+
+[Sample deck](decks/sample-deck/) — slide 3:
+
+![Sample deck — slide 3](docs/readme/sample-deck-slide-03.png)
+
+Sample deck — slide 16:
+
+![Sample deck — slide 16](docs/readme/sample-deck-slide-16.png)
 
 ## Requirements
 
@@ -19,6 +33,7 @@ bun install
 | `bun run deck:create --id deck01 --title "Deck 01" [--subtitle "…"]` | Scaffold a new deck |
 | `bun run deck:export --id deck01 --out ./deck01.zip` | Export one deck to zip |
 | `bun run deck:import --zip ./deck01.zip` | Import deck zip into `decks/` |
+| `bun run screenshots:readme` | Regenerate `docs/readme/*.png` (needs `bun run dev` and [Playwright](https://playwright.dev) Chromium: `bunx playwright install chromium`) |
 
 Restart the dev server after adding new files under `decks/` or `themes/` so Vite's glob imports pick them up.
 

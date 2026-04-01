@@ -25,6 +25,7 @@ import { WorkingArea } from './components/WorkingArea';
 import { PresentationInkLayer } from './components/PresentationInkLayer';
 import { SpeakerNotesSheet } from './components/SpeakerNotesSheet';
 import { loadDecks, getDefaultDeckId, SlideData, DeckMeta } from './slideLoader';
+import { formatDeckMetaDateDisplay } from './formatDeckMetaDateDisplay';
 import {
   pingDeckDevApi,
   saveDeckFile,
@@ -205,6 +206,16 @@ function App() {
     if (!raw || raw.toLowerCase() === 'new deck') return null;
     return raw;
   }, [selectedDeckMergedMeta]);
+
+  const openDeckDateLabel = useMemo(
+    () => formatDeckMetaDateDisplay(selectedDeckMergedMeta?.date),
+    [selectedDeckMergedMeta?.date],
+  );
+
+  const deckChromeDateLabel = useMemo(
+    () => formatDeckMetaDateDisplay(effectiveDeckMeta?.date),
+    [effectiveDeckMeta?.date],
+  );
 
   const totalSlides = slidesData.length;
   const currentSlideData = slidesData[currentSlide];
@@ -878,6 +889,7 @@ function App() {
                     <p className={`${faint} text-right`}>
                       Author:{' '}
                       {selectedDeckMergedMeta?.author || 'Unknown'}
+                      {openDeckDateLabel ? ` · ${openDeckDateLabel}` : ''}
                     </p>
                   </div>
                   <div className="mt-5 flex justify-end">
@@ -1314,7 +1326,7 @@ function App() {
             className={`text-[10px] min-w-0 justify-self-end text-right ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}
           >
             {effectiveDeckMeta?.author ? `☻ ${effectiveDeckMeta.author}` : '☻ Markdown Slider'}
-            {effectiveDeckMeta?.date ? ` · ◈ ${effectiveDeckMeta.date}` : ''}
+            {deckChromeDateLabel ? ` · ◈ ${deckChromeDateLabel}` : ''}
           </span>
         </div>
       </div>

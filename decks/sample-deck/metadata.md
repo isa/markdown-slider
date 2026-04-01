@@ -1,11 +1,12 @@
 ---
 title: Feature showcase
-subtitle: "DECK MODE"
-author: Markdown Slider
-date: 2026-04-01
+subtitle: DECK MODE
+author: Isa Goksu
+date: 2026-03-31
 defaultPalette: default
 defaultFont: libre-baskerville-franklin
-description: One slide per feature — typography, layouts, charts, Mermaid, themes, animations, tables, columns, HTML, and working areas.
+description: One slide per feature — typography, layouts, charts, Mermaid,
+  themes, animations, tables, columns, HTML, and working areas.
 tags:
   - sample
   - showcase
