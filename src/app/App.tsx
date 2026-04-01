@@ -1152,7 +1152,7 @@ function App() {
                     onSaveSlide={handleSaveSlideSource}
                     saveSlidePending={slideSavePending}
                   />
-                  {presentationMode ? <PresentationInkLayer /> : null}
+                  {presentationMode ? <PresentationInkLayer key={`ink-slide-${currentSlide}`} /> : null}
                 </div>
 
                 {/* Next arrow */}
@@ -1190,7 +1190,7 @@ function App() {
                   onSaveWorkingArea={handleSaveWorkingAreaSource}
                   saveWorkingAreaPending={workingSavePending}
                 />
-                {presentationMode ? <PresentationInkLayer /> : null}
+                {presentationMode ? <PresentationInkLayer key={`ink-working-${currentSlide}`} /> : null}
               </motion.div>
             )}
           </AnimatePresence>
