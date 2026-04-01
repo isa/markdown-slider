@@ -4,7 +4,24 @@ import type { LineChartEndMarker } from './components/SlideChartEmbeds';
 import { parseChartRowsFromFrontmatter, type SlideChartRow } from './slideChartData';
 
 export type { SlideChartRow } from './slideChartData';
-import { loadThemePresets, type ThemePreset } from './themeLoader';
+import {
+  loadPalettePresets,
+  loadFontPresets,
+  mergePaletteAndFontVars,
+  type FontPreset,
+  type PalettePreset,
+} from './themeLoader';
+import { LEGACY_THEME_BUNDLES, getLegacyThemeBundleIds } from './legacyThemeBundles';
+
+const PALETTES = loadPalettePresets();
+const FONTS = loadFontPresets();
+
+/** Deck-level defaults from `metadata.md` (and optional legacy `defaultTheme`). */
+export interface DeckSlideThemeDefaults {
+  defaultTheme?: string;
+  defaultPalette?: string;
+  defaultFont?: string;
+}
 
 /** CSS variable keys applied to `.slide-root` */
 export type SlideCssVars = Record<string, string>;
@@ -28,7 +45,10 @@ function parseSlideLayout(raw: unknown): SlideLayout {
 }
 
 export interface ResolvedSlideTheme {
+  /** Composite id, e.g. `default/libre-baskerville-franklin` */
   id: string;
+  paletteId: string;
+  fontId: string;
   /** CSS custom properties for inline style on slide root */
   cssVariables: CSSProperties;
   /** Optional class on slide root for entrance animation */
@@ -37,11 +57,70 @@ export interface ResolvedSlideTheme {
   align?: 'left' | 'center' | 'right';
 }
 
-const PRESETS: Record<string, ThemePreset> = loadThemePresets();
+/** Registered palette ids (`themes/palettes/*.yaml`) */
+export function getRegisteredPaletteIds(): string[] {
+  return Object.keys(PALETTES).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
 
-/** Theme ids available from `/themes/*.yaml` (for docs and tooling) */
+/** Registered font pack ids (`themes/fonts/*.yaml`) */
+export function getRegisteredFontIds(): string[] {
+  return Object.keys(FONTS).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+/** Legacy bundle ids for `theme:` / `defaultTheme` (each maps to a palette + font pair). */
 export function getRegisteredThemeIds(): string[] {
-  return Object.keys(PRESETS).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  return getLegacyThemeBundleIds();
+}
+
+function resolveDeckPaletteFont(deck?: DeckSlideThemeDefaults): { palette: string; font: string } {
+  if (!deck) return { ...LEGACY_THEME_BUNDLES.default };
+  const dp = typeof deck.defaultPalette === 'string' && deck.defaultPalette.trim();
+  const df = typeof deck.defaultFont === 'string' && deck.defaultFont.trim();
+  if (dp || df) {
+    return {
+      palette: dp ? deck.defaultPalette!.trim() : 'default',
+      font: df ? deck.defaultFont!.trim() : 'libre-baskerville-franklin',
+    };
+  }
+  const dt = typeof deck.defaultTheme === 'string' && deck.defaultTheme.trim();
+  if (dt && LEGACY_THEME_BUNDLES[dt]) {
+    return { ...LEGACY_THEME_BUNDLES[dt] };
+  }
+  if (dt && dt in PALETTES) {
+    return { palette: dt, font: 'libre-baskerville-franklin' };
+  }
+  return { ...LEGACY_THEME_BUNDLES.default };
+}
+
+function resolveSlidePaletteAndFont(
+  data: Record<string, unknown>,
+  deck?: DeckSlideThemeDefaults,
+): { palette: PalettePreset; font: FontPreset } {
+  const deckR = resolveDeckPaletteFont(deck);
+
+  let paletteId =
+    typeof data.palette === 'string' && data.palette.trim() ? data.palette.trim() : '';
+  let fontId = typeof data.font === 'string' && data.font.trim() ? data.font.trim() : '';
+
+  const themeLegacy =
+    typeof data.theme === 'string' && data.theme.trim() ? data.theme.trim() : '';
+  if (themeLegacy) {
+    const bundle = LEGACY_THEME_BUNDLES[themeLegacy];
+    if (bundle) {
+      if (!paletteId) paletteId = bundle.palette;
+      if (!fontId) fontId = bundle.font;
+    } else if (themeLegacy in PALETTES) {
+      if (!paletteId) paletteId = themeLegacy;
+    }
+  }
+
+  if (!paletteId) paletteId = deckR.palette;
+  if (!fontId) fontId = deckR.font;
+
+  const palette = PALETTES[paletteId] ?? PALETTES.default;
+  const font = FONTS[fontId] ?? FONTS['libre-baskerville-franklin'];
+
+  return { palette, font };
 }
 
 /** Maps frontmatter `slide` keys to CSS variable names */
@@ -91,42 +170,47 @@ function mergeOverrides(base: SlideCssVars, slide?: Record<string, unknown>): Sl
 export function resolveSlideTheme(
   data: Record<string, unknown>,
   colorMode: SlideColorMode = 'dark',
-  deckDefaultTheme?: string,
+  deckDefaults?: DeckSlideThemeDefaults,
 ): ResolvedSlideTheme {
-  const requested = typeof data.theme === 'string' ? data.theme.trim() : '';
-  const requestedDeckTheme =
-    typeof deckDefaultTheme === 'string' && deckDefaultTheme.trim() ? deckDefaultTheme.trim() : '';
-  const themeCandidate = requested || requestedDeckTheme;
-  const themeId = themeCandidate && themeCandidate in PRESETS ? themeCandidate : 'default';
-  const preset = PRESETS[themeId] ?? PRESETS.default;
+  const { palette, font } = resolveSlidePaletteAndFont(data, deckDefaults);
+  const baseVars = mergePaletteAndFontVars(palette, font, colorMode);
   const slide = data.slide as Record<string, unknown> | undefined;
-  const baseVars = colorMode === 'light' ? preset.varsLight : preset.varsDark;
   const vars = mergeOverrides(baseVars, slide);
   const cssVariables = vars as unknown as CSSProperties;
 
-  let rootClassName = preset.rootClassName;
+  let rootClassName = palette.rootClassName;
   if (slide?.entrance === 'stagger' || vars['--slide-entrance'] === 'stagger') {
     rootClassName = 'slide-root--stagger';
   }
 
   let align: 'left' | 'center' | 'right' | undefined;
-  const alignRaw = data.align ?? slide?.align ?? preset.defaultAlign;
+  const alignRaw = data.align ?? slide?.align ?? palette.defaultAlign;
   if (alignRaw === 'left' || alignRaw === 'center' || alignRaw === 'right') {
     align = alignRaw;
   }
 
   return {
-    id: preset.id,
+    id: `${palette.id}/${font.id}`,
+    paletteId: palette.id,
+    fontId: font.id,
     cssVariables,
     rootClassName,
     align,
   };
 }
 
+function normalizeDeckThemeDefaults(
+  deck?: DeckSlideThemeDefaults | string,
+): DeckSlideThemeDefaults | undefined {
+  if (deck === undefined) return undefined;
+  if (typeof deck === 'string') return { defaultTheme: deck };
+  return deck;
+}
+
 export function parseSlideMarkdown(
   raw: string,
   isDarkMode = true,
-  deckDefaultTheme?: string,
+  deckThemeDefaults?: DeckSlideThemeDefaults | string,
 ): {
   body: string;
   theme: ResolvedSlideTheme;
@@ -162,7 +246,7 @@ export function parseSlideMarkdown(
   const d = data as Record<string, unknown>;
   const layout = parseSlideLayout(d.layout);
   const colorMode: SlideColorMode = isDarkMode ? 'dark' : 'light';
-  const theme = resolveSlideTheme(d, colorMode, deckDefaultTheme);
+  const theme = resolveSlideTheme(d, colorMode, normalizeDeckThemeDefaults(deckThemeDefaults));
   const titleRaw = d.title;
   const subtitleRaw = d.subtitle;
   const title = typeof titleRaw === 'string' && titleRaw.trim() ? titleRaw.trim() : undefined;

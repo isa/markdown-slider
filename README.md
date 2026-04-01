@@ -40,7 +40,9 @@ markdown-slider/
 │   │           ├── style.css
 │   │           └── script.js
 │   └── <your-local-decks>/    # Usually gitignored
-├── themes/                    # Theme presets (`*.yaml`); `_*.yaml` ignored
+├── themes/
+│   ├── palettes/              # Color tokens (`*.yaml`); `_*.yaml` ignored
+│   └── fonts/                 # Typography tokens (`*.yaml`)
 ├── src/
 └── scripts/deck-cli.mjs
 ```
@@ -61,7 +63,8 @@ title: Team Update
 subtitle: DECK MODE
 author: Jane Doe
 date: 2026-03-31
-defaultTheme: default
+defaultPalette: default
+defaultFont: libre-baskerville-franklin
 description: Weekly roadmap sync
 tags:
   - weekly
@@ -69,7 +72,7 @@ tags:
 ---
 ```
 
-`subtitle` is the small line under the deck title in the app header (deck mode). `defaultTheme` is applied when a slide omits `theme` in its frontmatter.
+`subtitle` is the small line under the deck title in the app header (deck mode). `defaultPalette` and `defaultFont` set the slide look when a slide omits `palette` / `font` (and optional legacy `theme:`). You can still use **`defaultTheme`** alone as a shorthand for a named bundle; see [`themes/README.md`](themes/README.md).
 
 While viewing a deck, use **Edit deck metadata** (pencil in the header) to change title, subtitle, and related fields; those edits are stored in the browser. Use **Copy YAML** there to paste into `metadata.md` if you want the repo file to match.
 
@@ -83,23 +86,22 @@ While viewing a deck, use **Edit deck metadata** (pencil in the header) to chang
 
 ## Themes
 
-Slide appearance comes from YAML files in `themes/`. **default** uses Libre Baskerville + Libre Franklin with the navy/slate/coral palette. **watermelon-sorbet** uses Lora + Manrope with the Watermelon Sorbet palette. **rustic-charm** uses Montserrat + Nunito with the Rustic Charm palette. **monochrome-red** uses Oswald + Montserrat with the Monochrome Red palette. **cherry-blossom** uses Lusitana + Raleway with the Cherry Blossom palette (midnight, cherry red, slate, pale mint, off-white). **fiery-ocean** uses Ovo + Mulish with the Fiery Ocean palette (dark red, bright red, cream, indigo, sky blue). Reference in frontmatter:
+Slide appearance merges a **palette** (`themes/palettes/*.yaml`) and a **font pack** (`themes/fonts/*.yaml`). Example pairings: **default** palette + **libre-baskerville-franklin**; **watermelon-sorbet** + **lora-manrope**; **rustic-charm** + **montserrat-nunito**; **monochrome-red** + **oswald-montserrat**; **cherry-blossom** + **lusitana-raleway**; **fiery-ocean** + **ovo-mulish**.
+
+Mix and match in frontmatter:
 
 ```yaml
-theme: default
-# or
-theme: watermelon-sorbet
-# or
-theme: rustic-charm
-# or
-theme: monochrome-red
-# or
-theme: cherry-blossom
-# or
-theme: fiery-ocean
+palette: monochrome-red
+font: lora-manrope
 ```
 
-If `theme` is missing on a slide, deck `defaultTheme` is used, then fallback `default`.
+Legacy **bundle** shorthand (same pairs as before):
+
+```yaml
+theme: monochrome-red
+```
+
+If `palette` / `font` are missing on a slide, deck defaults apply (see **Deck metadata**), then the **`default`** bundle.
 
 ### Slide layouts (`layout:` in frontmatter)
 
@@ -120,7 +122,7 @@ Examples: `decks/sample-deck/slide05` (content), `slide07` / `slide51` (cover), 
 - Create a deck with one starter slide:
 
   ```bash
-  bun run deck:create --id deck01 --title "Deck 01" --subtitle "Optional tagline" --author "You" --default-theme default
+  bun run deck:create --id deck01 --title "Deck 01" --subtitle "Optional tagline" --author "You" --default-palette default --default-font libre-baskerville-franklin
   ```
 
 - Export a deck:

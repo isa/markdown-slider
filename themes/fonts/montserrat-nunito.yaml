@@ -1,0 +1,27 @@
+# Montserrat + Nunito
+
+id: montserrat-nunito
+name: Montserrat + Nunito
+description: Geometric sans headings, rounded sans body.
+
+dark:
+  css:
+    --slide-font-heading: '"Montserrat", system-ui, sans-serif'
+    --slide-font-body: '"Nunito", system-ui, sans-serif'
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 3rem
+    --slide-font-size-h2: 2.25rem
+    --slide-font-size-h3: 1.75rem
+    --slide-font-size-body: 1.25rem
+    --slide-line-height-body: "1.625"
+
+light:
+  css:
+    --slide-font-heading: '"Montserrat", system-ui, sans-serif'
+    --slide-font-body: '"Nunito", system-ui, sans-serif'
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 3rem
+    --slide-font-size-h2: 2.25rem
+    --slide-font-size-h3: 1.75rem
+    --slide-font-size-body: 1.25rem
+    --slide-line-height-body: "1.625"

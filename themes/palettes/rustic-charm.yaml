@@ -1,22 +1,13 @@
-# Rustic Charm — cream, taupe, charcoal, near-black, rust (Montserrat + Nunito)
-# Use: theme: rustic-charm
+# Rustic Charm — cream, taupe, charcoal, near-black, rust
 
 id: rustic-charm
 name: Rustic Charm
-description: Palette #FFFCF2 / #CCC5B9 / #403D39 / #252422 / #EB5E28; Montserrat headings, Nunito body.
+description: Palette #FFFCF2 / #CCC5B9 / #403D39 / #252422 / #EB5E28.
 
 align: left
 
 dark:
   css:
-    --slide-font-heading: '"Montserrat", system-ui, sans-serif'
-    --slide-font-body: '"Nunito", system-ui, sans-serif'
-    --slide-font-mono: ui-monospace, monospace
-    --slide-font-size-h1: 3rem
-    --slide-font-size-h2: 2.25rem
-    --slide-font-size-h3: 1.75rem
-    --slide-font-size-body: 1.25rem
-    --slide-line-height-body: "1.625"
     --slide-text: "#FFFCF2"
     --slide-text-muted: "#CCC5B9"
     --slide-heading-color: "#FFFCF2"
@@ -40,14 +31,6 @@ dark:
 
 light:
   css:
-    --slide-font-heading: '"Montserrat", system-ui, sans-serif'
-    --slide-font-body: '"Nunito", system-ui, sans-serif'
-    --slide-font-mono: ui-monospace, monospace
-    --slide-font-size-h1: 3rem
-    --slide-font-size-h2: 2.25rem
-    --slide-font-size-h3: 1.75rem
-    --slide-font-size-body: 1.25rem
-    --slide-line-height-body: "1.625"
     --slide-text: "#252422"
     --slide-text-muted: "#403D39"
     --slide-heading-color: "#252422"

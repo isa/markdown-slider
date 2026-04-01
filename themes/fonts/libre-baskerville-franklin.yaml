@@ -1,0 +1,27 @@
+# Libre Baskerville (heading) + Libre Franklin (body)
+
+id: libre-baskerville-franklin
+name: Libre Baskerville + Franklin
+description: Serif headings, grotesk body — default pairing.
+
+dark:
+  css:
+    --slide-font-heading: '"Libre Baskerville", Georgia, "Times New Roman", serif'
+    --slide-font-body: '"Libre Franklin", system-ui, sans-serif'
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 3rem
+    --slide-font-size-h2: 2.25rem
+    --slide-font-size-h3: 1.75rem
+    --slide-font-size-body: 1.25rem
+    --slide-line-height-body: "1.625"
+
+light:
+  css:
+    --slide-font-heading: '"Libre Baskerville", Georgia, "Times New Roman", serif'
+    --slide-font-body: '"Libre Franklin", system-ui, sans-serif'
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 3rem
+    --slide-font-size-h2: 2.25rem
+    --slide-font-size-h3: 1.75rem
+    --slide-font-size-body: 1.25rem
+    --slide-line-height-body: "1.625"

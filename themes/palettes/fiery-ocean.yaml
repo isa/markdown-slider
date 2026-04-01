@@ -1,22 +1,13 @@
-# Fiery Ocean — crimson, firelight cream, indigo sea, sky blue (Ovo + Mulish)
-# Use: theme: fiery-ocean
+# Fiery Ocean — crimson, firelight cream, indigo sea, sky blue
 
 id: fiery-ocean
 name: Fiery Ocean
-description: Palette #780000 / #C1121F / #FDF0D5 / #003049 / #669BBC; Ovo headings, Mulish body.
+description: Palette #780000 / #C1121F / #FDF0D5 / #003049 / #669BBC.
 
 align: left
 
 dark:
   css:
-    --slide-font-heading: '"Ovo", Georgia, serif'
-    --slide-font-body: '"Mulish", system-ui, sans-serif'
-    --slide-font-mono: ui-monospace, monospace
-    --slide-font-size-h1: 3rem
-    --slide-font-size-h2: 2.25rem
-    --slide-font-size-h3: 1.75rem
-    --slide-font-size-body: 1.25rem
-    --slide-line-height-body: "1.625"
     --slide-text: "#FDF0D5"
     --slide-text-muted: "#669BBC"
     --slide-heading-color: "#FDF0D5"
@@ -40,14 +31,6 @@ dark:
 
 light:
   css:
-    --slide-font-heading: '"Ovo", Georgia, serif'
-    --slide-font-body: '"Mulish", system-ui, sans-serif'
-    --slide-font-mono: ui-monospace, monospace
-    --slide-font-size-h1: 3rem
-    --slide-font-size-h2: 2.25rem
-    --slide-font-size-h3: 1.75rem
-    --slide-font-size-body: 1.25rem
-    --slide-line-height-body: "1.625"
     --slide-text: "#003049"
     --slide-text-muted: "#669BBC"
     --slide-heading-color: "#003049"

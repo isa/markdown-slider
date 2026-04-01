@@ -1,22 +1,13 @@
-# Watermelon Sorbet — juicy pink, zesty yellow, cool mint, vibrant blue, deep navy (Lora + Manrope)
-# Use: theme: watermelon-sorbet
+# Watermelon Sorbet — juicy pink, zesty yellow, cool mint, vibrant blue, deep navy
 
 id: watermelon-sorbet
 name: Watermelon Sorbet
-description: Palette #EF476F / #FFD166 / #06D6A0 / #118AB2 / #073B4C; Lora headings, Manrope body.
+description: Palette #EF476F / #FFD166 / #06D6A0 / #118AB2 / #073B4C.
 
 align: left
 
 dark:
   css:
-    --slide-font-heading: '"Lora", Georgia, serif'
-    --slide-font-body: '"Manrope", system-ui, sans-serif'
-    --slide-font-mono: ui-monospace, monospace
-    --slide-font-size-h1: 3rem
-    --slide-font-size-h2: 2.25rem
-    --slide-font-size-h3: 1.75rem
-    --slide-font-size-body: 1.25rem
-    --slide-line-height-body: "1.625"
     --slide-text: "#F8FAFC"
     --slide-text-muted: "#94C9D8"
     --slide-heading-color: "#FFD166"
@@ -40,14 +31,6 @@ dark:
 
 light:
   css:
-    --slide-font-heading: '"Lora", Georgia, serif'
-    --slide-font-body: '"Manrope", system-ui, sans-serif'
-    --slide-font-mono: ui-monospace, monospace
-    --slide-font-size-h1: 3rem
-    --slide-font-size-h2: 2.25rem
-    --slide-font-size-h3: 1.75rem
-    --slide-font-size-body: 1.25rem
-    --slide-line-height-body: "1.625"
     --slide-text: "#073B4C"
     --slide-text-muted: "#118AB2"
     --slide-heading-color: "#073B4C"

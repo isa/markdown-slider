@@ -1,5 +1,5 @@
-# Default slide theme — navy / slate / coral accent (Libre Baskerville + Libre Franklin)
-# Use `theme: default` or omit (deck defaultTheme). See also `watermelon-sorbet.yaml`, `rustic-charm.yaml`, `monochrome-red.yaml`, `cherry-blossom.yaml`, `fiery-ocean.yaml`.
+# Default palette — navy / slate / coral accent
+# Pair with fonts e.g. `font: libre-baskerville-franklin` or legacy `theme: default`
 
 id: default
 name: Default
@@ -9,14 +9,6 @@ align: left
 
 dark:
   css:
-    --slide-font-heading: '"Libre Baskerville", Georgia, "Times New Roman", serif'
-    --slide-font-body: '"Libre Franklin", system-ui, sans-serif'
-    --slide-font-mono: ui-monospace, monospace
-    --slide-font-size-h1: 3rem
-    --slide-font-size-h2: 2.25rem
-    --slide-font-size-h3: 1.75rem
-    --slide-font-size-body: 1.25rem
-    --slide-line-height-body: "1.625"
     --slide-text: "#F0F0F0"
     --slide-text-muted: "#9B9BC4"
     --slide-heading-color: "#F5F5F5"
@@ -40,14 +32,6 @@ dark:
 
 light:
   css:
-    --slide-font-heading: '"Libre Baskerville", Georgia, "Times New Roman", serif'
-    --slide-font-body: '"Libre Franklin", system-ui, sans-serif'
-    --slide-font-mono: ui-monospace, monospace
-    --slide-font-size-h1: 3rem
-    --slide-font-size-h2: 2.25rem
-    --slide-font-size-h3: 1.75rem
-    --slide-font-size-body: 1.25rem
-    --slide-line-height-body: "1.625"
     --slide-text: "#0A0A0A"
     --slide-text-muted: "#4E4E7E"
     --slide-heading-color: "#1A1A2E"

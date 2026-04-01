@@ -1,6 +1,33 @@
 # Slide themes
 
-YAML presets live in `themes/*.yaml`. Examples:
+Colors and typography are **separate** YAML presets so you can mix any palette with any font pack without multiplying files.
+
+- **Palettes** — `themes/palettes/*.yaml` — `--slide-text`, `--slide-accent`, shadows, code/table surfaces, etc.
+- **Fonts** — `themes/fonts/*.yaml` — `--slide-font-heading`, `--slide-font-body`, sizes, line height.
+
+Files named `_*.yaml` are ignored.
+
+## Deck defaults (`metadata.md`)
+
+Prefer explicit axes:
+
+```yaml
+defaultPalette: default
+defaultFont: libre-baskerville-franklin
+```
+
+**Legacy:** `defaultTheme: default` (and the other bundle ids below) still resolves to the same palette + font pairs via `src/app/legacyThemeBundles.ts`.
+
+## Slide frontmatter
+
+**Combine** palette + font:
+
+```yaml
+palette: monochrome-red
+font: lora-manrope
+```
+
+**Legacy shorthand** — one id selects a **named bundle** (palette + font):
 
 ```yaml
 theme: default
@@ -26,33 +53,27 @@ theme: cherry-blossom
 theme: fiery-ocean
 ```
 
-If `theme` is missing, the deck’s `defaultTheme` applies (usually `default`).
+If `palette` / `font` are omitted on a slide, deck defaults apply; if those are missing, bundle **`default`** is used.
 
-**Watermelon Sorbet** (`watermelon-sorbet.yaml`) uses **Lora** + **Manrope** and the palette Juicy Pink `#EF476F`, Zesty Yellow `#FFD166`, Cool Mint `#06D6A0`, Vibrant Blue `#118AB2`, Deep Navy `#073B4C`.
-
-**Rustic Charm** (`rustic-charm.yaml`) uses **Montserrat** + **Nunito** and cream `#FFFCF2`, taupe `#CCC5B9`, charcoal `#403D39`, near-black `#252422`, rust `#EB5E28`.
-
-**Monochrome Red** (`monochrome-red.yaml`) uses **Oswald** + **Montserrat** and charcoal `#2B2D42`, muted blue-gray `#8D99AE`, pale `#EDF2F4`, bright red `#EF233C`, crimson `#D80032`.
-
-**Cherry Blossom** (`cherry-blossom.yaml`) uses **Lusitana** + **Raleway** and midnight `#0C120C`, cherry red `#C20114`, slate `#6D7275`, pale mint `#C7D6D5`, off-white `#ECEBF3`.
-
-**Fiery Ocean** (`fiery-ocean.yaml`) uses **Ovo** + **Mulish** and dark red `#780000`, bright red `#C1121F`, cream `#FDF0D5`, indigo `#003049`, sky blue `#669BBC`.
-
-Load new fonts in `index.html` when you add a theme that needs them.
+Load new fonts in `index.html` when you add a font pack that needs them.
 
 The app **light/dark toggle** selects which token set is active: nested maps **`dark:`** and **`light:`**, each with a **`css:`** map of `--slide-*` variables.
 
-## File format
+## Palette file format
 
 | Field | Required | Description |
 |--------|-----------|-------------|
-| `id` | Recommended | Must match `theme:` in slides (e.g. `default`, `watermelon-sorbet`, `rustic-charm`, `monochrome-red`, `cherry-blossom`, `fiery-ocean`). |
+| `id` | Recommended | Matches `palette:` in slides (e.g. `default`, `monochrome-red`). |
 | `name` | Optional | Human-readable label. |
 | `description` | Optional | Short summary. |
 | `align` | Optional | Default whole-slide alignment: `left`, `center`, or `right`. |
 | `rootClassName` | Optional | Extra class on `.slide-root`. |
-| `dark` | **Required** (or legacy `css`) | YAML object with **`css:`** — `--slide-*` custom properties for app dark mode. |
+| `dark` | **Required** (or legacy `css`) | YAML object with **`css:`** — non-font `--slide-*` variables for app dark mode. |
 | `light` | **Recommended** | Same shape for app light mode. |
+
+## Font file format
+
+Same structure, but **`css:`** should only set typography-related variables (`--slide-font-*`, `--slide-line-height-body`, `--slide-heading-weight-*` if used).
 
 Per-slide overrides under **`slide:`** in frontmatter merge on top (see `src/app/slideThemes.ts` `OVERRIDE_KEYS`). Staggered entrance without a separate theme: **`slide: { entrance: stagger }`**.
 
@@ -62,4 +83,4 @@ Typography: `--slide-font-heading`, `--slide-font-body`, `--slide-font-mono`, si
 
 Colors: `--slide-text`, `--slide-text-muted`, `--slide-heading-*-color`, `--slide-accent`, `--slide-bg`, `--slide-bullet-color`, code/table/blockquote tokens, etc.
 
-Restart the dev server after adding or editing a theme file so Vite picks up the glob.
+Restart the dev server after adding or editing files under `themes/palettes/` or `themes/fonts/` so Vite picks up the globs.

@@ -8,7 +8,7 @@ import { SlidePresenter } from './components/SlidePresenter';
 import { WorkingArea } from './components/WorkingArea';
 import { PresentationInkLayer } from './components/PresentationInkLayer';
 import { loadDecks, getDefaultDeckId, SlideData, DeckMeta } from './slideLoader';
-import { getRegisteredThemeIds } from './slideThemes';
+import { getRegisteredFontIds, getRegisteredPaletteIds, type DeckSlideThemeDefaults } from './slideThemes';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Card, CardContent } from './components/ui/card';
@@ -56,6 +56,8 @@ function buildMetadataYamlSnippet(meta: DeckMeta): string {
   if (meta.author) doc.author = meta.author;
   if (meta.date) doc.date = meta.date;
   if (meta.defaultTheme) doc.defaultTheme = meta.defaultTheme;
+  if (meta.defaultPalette) doc.defaultPalette = meta.defaultPalette;
+  if (meta.defaultFont) doc.defaultFont = meta.defaultFont;
   if (meta.description) doc.description = meta.description;
   if (meta.tags?.length) doc.tags = meta.tags;
   const body = yamlStringify(doc).trimEnd();
@@ -63,7 +65,8 @@ function buildMetadataYamlSnippet(meta: DeckMeta): string {
 }
 
 const decksCatalog = loadDecks();
-const themeOptions = getRegisteredThemeIds();
+const paletteOptions = getRegisteredPaletteIds();
+const fontOptions = getRegisteredFontIds();
 const deckFromUrl = new URLSearchParams(window.location.search).get('deck');
 const initialDeckId =
   (deckFromUrl && decksCatalog.some((d) => d.id === deckFromUrl) && deckFromUrl) ||
@@ -119,7 +122,8 @@ function App() {
   const [goToSlideValue, setGoToSlideValue] = useState('');
   const [newDeckTitle, setNewDeckTitle] = useState('');
   const [newDeckAuthor, setNewDeckAuthor] = useState('');
-  const [newDeckTheme, setNewDeckTheme] = useState('default');
+  const [newDeckPalette, setNewDeckPalette] = useState('default');
+  const [newDeckFont, setNewDeckFont] = useState('libre-baskerville-franklin');
   const [copiedCreateCmd, setCopiedCreateCmd] = useState(false);
   const [deckMetaOverrides, setDeckMetaOverrides] = useState<Record<string, Partial<DeckMeta>>>(loadDeckMetaOverrides);
   const [deckMetaDialogOpen, setDeckMetaDialogOpen] = useState(false);
@@ -154,7 +158,15 @@ function App() {
   const totalSlides = slidesData.length;
   const currentSlideData = slidesData[currentSlide];
   const hasWorkingArea = !!currentSlideData?.workingArea;
-  const activeDeckDefaultTheme = activeDeck?.meta.defaultTheme;
+  const activeDeckThemeDefaults = useMemo((): DeckSlideThemeDefaults | undefined => {
+    if (!activeDeck) return undefined;
+    const m = mergeDeckMeta(activeDeck.meta, deckMetaOverrides[activeDeck.id]);
+    return {
+      defaultTheme: m.defaultTheme,
+      defaultPalette: m.defaultPalette,
+      defaultFont: m.defaultFont,
+    };
+  }, [activeDeck, deckMetaOverrides]);
 
   useEffect(() => {
     try {
@@ -545,15 +557,18 @@ function App() {
     const parts = ['bun run deck:create', '--id', `"${suggestedDeckId}"`];
     if (newDeckTitle.trim()) parts.push('--title', `"${newDeckTitle.trim()}"`);
     if (newDeckAuthor.trim()) parts.push('--author', `"${newDeckAuthor.trim()}"`);
-    const themeId = newDeckTheme.trim() || 'default';
-    parts.push('--default-theme', `"${themeId}"`);
+    const paletteId = newDeckPalette.trim() || 'default';
+    const fontId = newDeckFont.trim() || 'libre-baskerville-franklin';
+    parts.push('--default-palette', `"${paletteId}"`);
+    parts.push('--default-font', `"${fontId}"`);
     return parts.join(' ');
-  }, [suggestedDeckId, newDeckTitle, newDeckAuthor, newDeckTheme]);
+  }, [suggestedDeckId, newDeckTitle, newDeckAuthor, newDeckPalette, newDeckFont]);
 
   const createDeckCommandFallback = useMemo(() => {
-    const themeId = newDeckTheme.trim() || 'default';
-    return `bun run deck:create --id "my-deck" --title "My Deck" --default-theme "${themeId}"`;
-  }, [newDeckTheme]);
+    const paletteId = newDeckPalette.trim() || 'default';
+    const fontId = newDeckFont.trim() || 'libre-baskerville-franklin';
+    return `bun run deck:create --id "my-deck" --title "My Deck" --default-palette "${paletteId}" --default-font "${fontId}"`;
+  }, [newDeckPalette, newDeckFont]);
 
   const copyCreateCommand = useCallback(async () => {
     const command = createDeckCommand || createDeckCommandFallback;
@@ -579,10 +594,10 @@ function App() {
 
     return (
       <div
-        className={`h-screen w-screen p-8 flex items-center justify-center ${pickerSurface}`}
+        className={`h-screen w-screen min-w-0 overflow-x-hidden p-4 sm:p-8 flex items-center justify-center ${pickerSurface}`}
       >
         <Card
-          className={`relative w-full max-w-5xl rounded-3xl border shadow-[0_8px_40px_rgba(0,0,0,0.35)] px-10 py-9 md:px-12 md:py-11 ${pickerCard}`}
+          className={`relative w-full min-w-0 max-w-5xl rounded-3xl border shadow-[0_8px_40px_rgba(0,0,0,0.35)] px-6 py-8 sm:px-10 sm:py-9 md:px-12 md:py-11 ${pickerCard}`}
         >
           <Button
             onClick={toggleTheme}
@@ -607,9 +622,9 @@ function App() {
             </p>
           </div>
 
-          <CardContent className="mt-10 px-0 pb-0">
-            <div className="grid gap-10 md:gap-12 md:grid-cols-[1fr_auto_1fr] items-start">
-              <section>
+          <CardContent className="mt-10 min-w-0 px-0 pb-0">
+            <div className="grid min-w-0 gap-10 md:gap-12 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start">
+              <section className="min-w-0 max-w-full">
               <h2 className={`text-sm uppercase tracking-wide mb-2 ${faint}`}>Open deck</h2>
               {decksCatalog.length ? (
                 <>
@@ -617,7 +632,7 @@ function App() {
                     value={selectedDeckId ?? undefined}
                     onValueChange={(value) => setSelectedDeckId(value || null)}
                   >
-                    <SelectTrigger className={`h-10 ${fieldClass}`}>
+                    <SelectTrigger className={`h-10 w-full min-w-0 max-w-full ${fieldClass}`}>
                       <SelectValue placeholder="Select a deck" />
                     </SelectTrigger>
                     <SelectContent className={isDarkMode ? 'bg-zinc-900 border-zinc-700 text-zinc-100' : ''}>
@@ -659,31 +674,43 @@ function App() {
                 className={`hidden md:block self-stretch ${isDarkMode ? 'bg-zinc-800' : 'bg-zinc-200'}`}
               />
 
-              <section>
+              <section className="min-w-0 max-w-full">
               <h2 className={`text-sm uppercase tracking-wide mb-2 ${faint}`}>Create new deck</h2>
-              <div className="space-y-3">
+              <div className="space-y-3 min-w-0">
                 <Input
                   type="text"
                   value={newDeckTitle}
                   onChange={(e) => setNewDeckTitle(e.target.value)}
                   placeholder="Deck title"
-                  className={`h-10 ${fieldClass}`}
+                  className={`h-10 w-full min-w-0 max-w-full box-border ${fieldClass}`}
                 />
                 <Input
                   type="text"
                   value={newDeckAuthor}
                   onChange={(e) => setNewDeckAuthor(e.target.value)}
                   placeholder="Author (optional)"
-                  className={`h-10 ${fieldClass}`}
+                  className={`h-10 w-full min-w-0 max-w-full box-border ${fieldClass}`}
                 />
-                <Select value={newDeckTheme} onValueChange={setNewDeckTheme}>
-                  <SelectTrigger className={`h-10 ${fieldClass}`}>
-                    <SelectValue placeholder="default" />
+                <Select value={newDeckPalette} onValueChange={setNewDeckPalette}>
+                  <SelectTrigger className={`h-10 w-full min-w-0 max-w-full ${fieldClass}`}>
+                    <SelectValue placeholder="Palette" />
                   </SelectTrigger>
                   <SelectContent className={isDarkMode ? 'bg-zinc-900 border-zinc-700 text-zinc-100' : ''}>
-                    {themeOptions.map((themeId) => (
-                      <SelectItem key={themeId} value={themeId}>
-                        {themeId}
+                    {paletteOptions.map((id) => (
+                      <SelectItem key={id} value={id}>
+                        {id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={newDeckFont} onValueChange={setNewDeckFont}>
+                  <SelectTrigger className={`h-10 w-full min-w-0 max-w-full ${fieldClass}`}>
+                    <SelectValue placeholder="Font pack" />
+                  </SelectTrigger>
+                  <SelectContent className={isDarkMode ? 'bg-zinc-900 border-zinc-700 text-zinc-100' : ''}>
+                    {fontOptions.map((id) => (
+                      <SelectItem key={id} value={id}>
+                        {id}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -712,7 +739,9 @@ function App() {
                     {copiedCreateCmd ? 'Copied' : 'Copy'}
                   </Button>
                 </div>
-                <div className={`rounded-lg border overflow-hidden ${isDarkMode ? 'border-zinc-600' : 'border-zinc-300'}`}>
+                <div
+                  className={`rounded-lg border max-w-full min-w-0 overflow-x-auto ${isDarkMode ? 'border-zinc-600' : 'border-zinc-300'}`}
+                >
                   <SyntaxHighlighter
                     language="bash"
                     style={oneDark}
@@ -722,6 +751,7 @@ function App() {
                       fontSize: '0.76rem',
                       lineHeight: 1.45,
                       background: isDarkMode ? '#09090b' : '#f4f4f5',
+                      minWidth: 0,
                     }}
                     codeTagProps={{
                       style: {
@@ -888,7 +918,7 @@ function App() {
                     slideContent={currentSlideData?.content ?? '# No content'}
                     slideType={currentSlideData?.type ?? 'md'}
                     currentSlide={currentSlide}
-                    deckDefaultTheme={activeDeckDefaultTheme}
+                    deckThemeDefaults={activeDeckThemeDefaults}
                     isDarkMode={isDarkMode}
                     presentationMode={presentationMode}
                     onContentChange={(content) => updateSlideContent(currentSlide, content)}

@@ -21,6 +21,9 @@ export interface DeckMeta {
   author?: string;
   date?: string;
   defaultTheme?: string;
+  /** When set, overrides palette implied by `defaultTheme` for that axis. */
+  defaultPalette?: string;
+  defaultFont?: string;
   description?: string;
   tags?: string[];
 }
@@ -107,6 +110,14 @@ function parseDeckMeta(deckId: string): DeckMeta {
     typeof data.defaultTheme === 'string' && data.defaultTheme.trim()
       ? data.defaultTheme.trim()
       : undefined;
+  const defaultPalette =
+    typeof data.defaultPalette === 'string' && data.defaultPalette.trim()
+      ? data.defaultPalette.trim()
+      : undefined;
+  const defaultFont =
+    typeof data.defaultFont === 'string' && data.defaultFont.trim()
+      ? data.defaultFont.trim()
+      : undefined;
   const description =
     typeof data.description === 'string' && data.description.trim() ? data.description.trim() : undefined;
   return {
@@ -116,6 +127,8 @@ function parseDeckMeta(deckId: string): DeckMeta {
     author,
     date,
     defaultTheme,
+    defaultPalette,
+    defaultFont,
     description,
     tags: toStringArray(data.tags),
   };

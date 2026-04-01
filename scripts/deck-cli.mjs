@@ -63,20 +63,34 @@ function cmdCreate(args) {
   const title = String(args.title || id).trim() || id;
   const subtitle = String(args.subtitle || '').trim();
   const author = String(args.author || '').trim();
-  const defaultTheme = String(args['default-theme'] || 'default').trim() || 'default';
+  const defaultPaletteArg = String(args['default-palette'] || '').trim();
+  const defaultFontArg = String(args['default-font'] || '').trim();
+  const defaultTheme = String(args['default-theme'] || '').trim();
   const date = String(args.date || new Date().toISOString().slice(0, 10)).trim();
 
   const deckDir = path.join(decksRoot, id);
   if (existsSync(deckDir)) fail(`Deck already exists: decks/${id}`);
 
   mkdirSync(path.join(deckDir, 'slide01'), { recursive: true });
+
+  let themeBlock;
+  if (defaultPaletteArg || defaultFontArg) {
+    const palette = defaultPaletteArg || 'default';
+    const font = defaultFontArg || 'libre-baskerville-franklin';
+    themeBlock = [`defaultPalette: ${palette}`, `defaultFont: ${font}`];
+  } else if (defaultTheme) {
+    themeBlock = [`defaultTheme: ${defaultTheme}`];
+  } else {
+    themeBlock = ['defaultPalette: default', 'defaultFont: libre-baskerville-franklin'];
+  }
+
   const metadata = [
     '---',
     `title: ${title}`,
     ...(subtitle ? [`subtitle: ${subtitle}`] : []),
     ...(author ? [`author: ${author}`] : []),
     ...(date ? [`date: ${date}`] : []),
-    `defaultTheme: ${defaultTheme}`,
+    ...themeBlock,
     'description: New deck',
     '---',
     '',
@@ -167,7 +181,7 @@ function cmdImport(args) {
 
 function printUsage() {
   console.log(`Usage:
-  bun run deck:create --id <deck-id> --title <title> [--subtitle <text>] [--author <author>] [--default-theme <theme>] [--date YYYY-MM-DD]
+  bun run deck:create --id <deck-id> --title <title> [--subtitle <text>] [--author <author>] [--default-palette <id>] [--default-font <id>] [--default-theme <bundle>] [--date YYYY-MM-DD]
   bun run deck:export --id <deck-id> [--out ./deck.zip]
   bun run deck:import --zip ./deck.zip [--id <override-id>]
 `);

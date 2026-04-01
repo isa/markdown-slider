@@ -3,13 +3,13 @@ import { Code } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SourceEditor } from './SourceEditor';
 import { SlideMarkdown } from './SlideMarkdown';
-import { parseSlideMarkdown, type SlideLayout } from '../slideThemes';
+import { parseSlideMarkdown, type DeckSlideThemeDefaults, type SlideLayout } from '../slideThemes';
 
 interface SlidePresenterProps {
   slideContent: string;
   slideType: 'md' | 'html';
   currentSlide: number;
-  deckDefaultTheme?: string;
+  deckThemeDefaults?: DeckSlideThemeDefaults;
   isDarkMode?: boolean;
   /** Hides edit control and ignores source toggle while presenting. */
   presentationMode?: boolean;
@@ -26,7 +26,7 @@ export function SlidePresenter({
   slideContent,
   slideType,
   currentSlide,
-  deckDefaultTheme,
+  deckThemeDefaults,
   isDarkMode = true,
   presentationMode = false,
   onContentChange,
@@ -58,7 +58,7 @@ export function SlidePresenter({
     if (slideType !== 'md') {
       return {
         body: '',
-        theme: parseSlideMarkdown('', isDarkMode, deckDefaultTheme).theme,
+        theme: parseSlideMarkdown('', isDarkMode, deckThemeDefaults).theme,
         title: undefined,
         subtitle: undefined,
         layout: 'content' as SlideLayout,
@@ -76,8 +76,8 @@ export function SlidePresenter({
         mermaidNodes: undefined,
       };
     }
-    return parseSlideMarkdown(slideContent, isDarkMode, deckDefaultTheme);
-  }, [slideContent, slideType, isDarkMode, deckDefaultTheme]);
+    return parseSlideMarkdown(slideContent, isDarkMode, deckThemeDefaults);
+  }, [slideContent, slideType, isDarkMode, deckThemeDefaults]);
 
   const imageSlideCssVars = useMemo((): CSSProperties => {
     if (layout !== 'image') return {};
