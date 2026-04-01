@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect, type CSSProperties } from 'react';
+import { useMemo, useState, useRef, useEffect, type CSSProperties, type ReactNode } from 'react';
 import { Code } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SourceEditor } from './SourceEditor';
@@ -15,6 +15,11 @@ interface SlidePresenterProps {
   presentationMode?: boolean;
   onContentChange?: (content: string) => void;
   onSourceToggle?: (open: boolean) => void;
+}
+
+/** Wraps slide header + body so the block can be vertically centered in the slide when shorter than the viewport. */
+function SlideContentStack({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={['slide-content-stack', className].filter(Boolean).join(' ')}>{children}</div>;
 }
 
 export function SlidePresenter({
@@ -155,6 +160,7 @@ export function SlidePresenter({
     isCover && coverBackgroundImage && 'slide-root--cover--fullbleed',
     isImage && 'slide-root--image',
     isQuote && 'slide-root--quote',
+    slideType === 'md' && 'slide-root--vcenter',
   ]
     .filter(Boolean)
     .join(' ');
@@ -231,22 +237,24 @@ export function SlidePresenter({
                   </>
                 ) : null}
                 {title ? (
-                  <header className="slide-deck-header slide-deck-header--cover">
-                    <div className="slide-deck-header__row slide-deck-header__row--cover">
-                      <span
-                        className={`slide-deck-header__title${coverHasBg ? ' slide-deck-header__title--cover-on-photo' : ''}`}
-                      >
-                        {title}
-                      </span>
-                      {subtitle ? (
+                  <SlideContentStack className="slide-content-stack--cover">
+                    <header className="slide-deck-header slide-deck-header--cover">
+                      <div className="slide-deck-header__row slide-deck-header__row--cover">
                         <span
-                          className={`slide-deck-header__subtitle slide-deck-header__subtitle--cover${coverHasBg ? ' slide-deck-header__subtitle--cover-on-photo' : ''}`}
+                          className={`slide-deck-header__title${coverHasBg ? ' slide-deck-header__title--cover-on-photo' : ''}`}
                         >
-                          {subtitle}
+                          {title}
                         </span>
-                      ) : null}
-                    </div>
-                  </header>
+                        {subtitle ? (
+                          <span
+                            className={`slide-deck-header__subtitle slide-deck-header__subtitle--cover${coverHasBg ? ' slide-deck-header__subtitle--cover-on-photo' : ''}`}
+                          >
+                            {subtitle}
+                          </span>
+                        ) : null}
+                      </div>
+                    </header>
+                  </SlideContentStack>
                 ) : null}
               </div>
             ) : isImage ? (
@@ -254,9 +262,44 @@ export function SlidePresenter({
                 className={rootClass}
                 style={{ ...theme.cssVariables, ...imageSlideCssVars }}
               >
-                <div className="slide-deck-body slide-deck-body--image">
-                  <div className="slide-image-layout-stack">
-                    <div className="slide-image-layout-figure">
+                <SlideContentStack>
+                  <div className="slide-deck-body slide-deck-body--image">
+                    <div className="slide-image-layout-stack">
+                      <div className="slide-image-layout-figure">
+                        <SlideMarkdown
+                          markdown={body}
+                          lineChartData={lineChart}
+                          barChartData={barChart}
+                          pieChartData={pieChart}
+                          pieChartLegendPosition={pieChartLegendPosition}
+                          barChartStacked={barChartStacked}
+                          lineChartArea={lineChartArea}
+                          lineChartEndMarker={lineChartEndMarker}
+                          mermaidNodes={mermaidNodes}
+                        />
+                      </div>
+                      {imageCaption ? (
+                        <p className="slide-figure-caption">{imageCaption}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                </SlideContentStack>
+              </div>
+            ) : isQuote ? (
+              <div className={rootClass} style={theme.cssVariables}>
+                <SlideContentStack className="slide-content-stack--quote">
+                  {title ? (
+                    <header className="slide-deck-header slide-deck-header--quote">
+                      <div className="slide-deck-header__row slide-deck-header__row--quote">
+                        <span className="slide-deck-header__title slide-deck-header__title--quote">
+                          {title}
+                        </span>
+                      </div>
+                      <div className="slide-deck-header__rule" aria-hidden />
+                    </header>
+                  ) : null}
+                  <div className="slide-deck-body slide-deck-body--quote">
+                    <div className="slide-quote-stack">
                       <SlideMarkdown
                         markdown={body}
                         lineChartData={lineChart}
@@ -268,27 +311,28 @@ export function SlidePresenter({
                         lineChartEndMarker={lineChartEndMarker}
                         mermaidNodes={mermaidNodes}
                       />
+                      {subtitle ? (
+                        <p className="slide-quote-attribution">{subtitle}</p>
+                      ) : null}
                     </div>
-                    {imageCaption ? (
-                      <p className="slide-figure-caption">{imageCaption}</p>
-                    ) : null}
                   </div>
-                </div>
+                </SlideContentStack>
               </div>
-            ) : isQuote ? (
+            ) : (
               <div className={rootClass} style={theme.cssVariables}>
-                {title ? (
-                  <header className="slide-deck-header slide-deck-header--quote">
-                    <div className="slide-deck-header__row slide-deck-header__row--quote">
-                      <span className="slide-deck-header__title slide-deck-header__title--quote">
-                        {title}
-                      </span>
-                    </div>
-                    <div className="slide-deck-header__rule" aria-hidden />
-                  </header>
-                ) : null}
-                <div className="slide-deck-body slide-deck-body--quote">
-                  <div className="slide-quote-stack">
+                <SlideContentStack>
+                  {title ? (
+                    <header className="slide-deck-header">
+                      <div className="slide-deck-header__row slide-deck-header__row--stack">
+                        <span className="slide-deck-header__title">{title}</span>
+                        {subtitle ? (
+                          <span className="slide-deck-header__subtitle">{subtitle}</span>
+                        ) : null}
+                      </div>
+                      <div className="slide-deck-header__rule" aria-hidden />
+                    </header>
+                  ) : null}
+                  <div className="slide-deck-body">
                     <SlideMarkdown
                       markdown={body}
                       lineChartData={lineChart}
@@ -300,41 +344,8 @@ export function SlidePresenter({
                       lineChartEndMarker={lineChartEndMarker}
                       mermaidNodes={mermaidNodes}
                     />
-                    {subtitle ? (
-                      <p className="slide-quote-attribution">{subtitle}</p>
-                    ) : null}
                   </div>
-                </div>
-              </div>
-            ) : (
-              <div className={rootClass} style={theme.cssVariables}>
-                {title ? (
-                  <header className="slide-deck-header">
-                    <div className="slide-deck-header__row">
-                      <span className="slide-deck-header__title">{title}</span>
-                      {subtitle ? (
-                        <>
-                          <span className="slide-deck-header__vsep" aria-hidden />
-                          <span className="slide-deck-header__subtitle">{subtitle}</span>
-                        </>
-                      ) : null}
-                    </div>
-                    <div className="slide-deck-header__rule" aria-hidden />
-                  </header>
-                ) : null}
-                <div className="slide-deck-body">
-                  <SlideMarkdown
-                    markdown={body}
-                    lineChartData={lineChart}
-                    barChartData={barChart}
-                    pieChartData={pieChart}
-                    pieChartLegendPosition={pieChartLegendPosition}
-                    barChartStacked={barChartStacked}
-                    lineChartArea={lineChartArea}
-                    lineChartEndMarker={lineChartEndMarker}
-                    mermaidNodes={mermaidNodes}
-                  />
-                </div>
+                </SlideContentStack>
               </div>
             )}
           </motion.div>
