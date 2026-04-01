@@ -5,13 +5,15 @@ import {
   RotateCcw,
   Sun,
   Moon,
-  Plus,
   FolderOpen,
   Copy,
   Check,
   Presentation,
   Pencil,
   Library,
+  MessageSquare,
+  FilePlus,
+  PanelsTopLeft,
 } from 'lucide-react';
 import { stringify as yamlStringify } from 'yaml';
 import { toast } from 'sonner';
@@ -21,6 +23,7 @@ import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { SlidePresenter } from './components/SlidePresenter';
 import { WorkingArea } from './components/WorkingArea';
 import { PresentationInkLayer } from './components/PresentationInkLayer';
+import { SpeakerNotesSheet } from './components/SpeakerNotesSheet';
 import { loadDecks, getDefaultDeckId, SlideData, DeckMeta } from './slideLoader';
 import {
   pingDeckDevApi,
@@ -148,6 +151,7 @@ function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [slidesData, setSlidesData] = useState<SlideData[]>([]);
   const [slideSourceOpen, setSlideSourceOpen] = useState(false);
+  const [speakerNotesOpen, setSpeakerNotesOpen] = useState(false);
   const [workingSourceOpen, setWorkingSourceOpen] = useState(false);
   const [goToSlideOpen, setGoToSlideOpen] = useState(false);
   const [goToSlideValue, setGoToSlideValue] = useState('');
@@ -343,6 +347,7 @@ function App() {
     setWorkingSourceOpen(false);
     setGoToSlideOpen(false);
     setGoToSlideValue('');
+    setSpeakerNotesOpen(false);
     setPresentationMode(false);
     void exitFullscreenDom();
     setActiveDeckId(deck.id);
@@ -528,6 +533,7 @@ function App() {
   const enterPresentation = useCallback(() => {
     setSlideSourceOpen(false);
     setWorkingSourceOpen(false);
+    setSpeakerNotesOpen(false);
     setPresentationMode(true);
   }, []);
 
@@ -583,6 +589,14 @@ function App() {
         return;
       }
 
+      if (speakerNotesOpen) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setSpeakerNotesOpen(false);
+          return;
+        }
+      }
+
       if (tag === 'TEXTAREA' || tag === 'INPUT') return;
       if (!activeDeckId) {
         if (e.key === 't' || e.key === 'T') {
@@ -610,10 +624,25 @@ function App() {
           void exitPresentation();
           return;
         }
+        if (e.key === 'n' || e.key === 'N') {
+          if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+            e.preventDefault();
+            setSpeakerNotesOpen((o) => !o);
+          }
+          return;
+        }
         if (e.key === 'e' || e.key === 'E' || e.key === 'g' || e.key === 'G') {
           e.preventDefault();
           return;
         }
+      }
+
+      if (e.key === 'n' || e.key === 'N') {
+        if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+          e.preventDefault();
+          setSpeakerNotesOpen((o) => !o);
+        }
+        return;
       }
 
       if (e.key === 'Escape') {
@@ -666,6 +695,7 @@ function App() {
     enterPresentation,
     exitPresentation,
     deckMetaDialogOpen,
+    speakerNotesOpen,
   ]);
 
   // State-colored border + glow (same logic in light and dark; base shadow only differs)
@@ -777,7 +807,7 @@ function App() {
           </div>
 
           <CardContent className="mt-10 min-w-0 px-0 pb-0">
-            <div className="grid min-w-0 gap-10 md:gap-12 md:grid-cols-[minmax(0,0.58fr)_auto_minmax(0,1.42fr)] items-start">
+            <div className="grid min-w-0 gap-10 md:gap-12 md:grid-cols-[minmax(0,0.66fr)_auto_minmax(0,1.34fr)] items-start">
               <section className="min-w-0 max-w-full">
               <h2 className={`text-sm uppercase tracking-wide mb-2 ${faint}`}>Open deck</h2>
               {decksCatalog.length ? (
@@ -981,6 +1011,16 @@ function App() {
           </div>
         </div>
       ) : null}
+      {activeDeckId && currentSlideData ? (
+        <SpeakerNotesSheet
+          open={speakerNotesOpen}
+          onOpenChange={setSpeakerNotesOpen}
+          deckId={activeDeckId}
+          slideId={currentSlideData.id}
+          markdown={currentSlideData.speakerNotes}
+          isDarkMode={isDarkMode}
+        />
+      ) : null}
       {/* Outer container - the "device frame" (fullscreen target: entire deck UI, not browser chrome) */}
       <div
         ref={presentationContainerRef}
@@ -1008,7 +1048,7 @@ function App() {
               </p>
             ) : null}
           </div>
-          <div className="flex items-center gap-2 w-48 justify-end flex-wrap">
+          <div className="flex items-center gap-2 min-w-0 justify-end flex-wrap">
             <button
               type="button"
               onClick={() => {
@@ -1020,6 +1060,24 @@ function App() {
               aria-label="Back to deck picker"
             >
               <Library className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSpeakerNotesOpen((o) => !o)}
+              className={`w-9 h-9 flex items-center justify-center rounded-full backdrop-blur-sm border transition-all duration-200 outline-none ${
+                speakerNotesOpen
+                  ? isDarkMode
+                    ? 'bg-emerald-900/80 border-emerald-500/50 text-emerald-100'
+                    : 'bg-emerald-100 border-emerald-400 text-emerald-800'
+                  : isDarkMode
+                    ? 'bg-zinc-800/70 border-zinc-600/50 hover:bg-zinc-700 text-white'
+                    : 'bg-white/70 border-zinc-300 hover:bg-zinc-200 text-zinc-700'
+              }`}
+              title={speakerNotesOpen ? 'Close speaker notes (Esc or N)' : 'Speaker notes (N)'}
+              aria-label={speakerNotesOpen ? 'Close speaker notes' : 'Open speaker notes'}
+              aria-pressed={speakerNotesOpen}
+            >
+              <MessageSquare className="w-4 h-4" />
             </button>
             <button
               type="button"
@@ -1094,7 +1152,7 @@ function App() {
                     onSaveSlide={handleSaveSlideSource}
                     saveSlidePending={slideSavePending}
                   />
-                  {presentationMode ? <PresentationInkLayer isDarkMode={isDarkMode} /> : null}
+                  {presentationMode ? <PresentationInkLayer /> : null}
                 </div>
 
                 {/* Next arrow */}
@@ -1132,61 +1190,61 @@ function App() {
                   onSaveWorkingArea={handleSaveWorkingAreaSource}
                   saveWorkingAreaPending={workingSavePending}
                 />
-                {presentationMode ? <PresentationInkLayer isDarkMode={isDarkMode} /> : null}
+                {presentationMode ? <PresentationInkLayer /> : null}
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Footer dots */}
-        <div className="shrink-0 pb-6 px-10 pt-1 flex items-center justify-between">
-          <span className={`text-[10px] ${isDarkMode ? 'text-zinc-600' : 'text-zinc-400'}`}>← → nav · G go to · E source · Esc close · F flip · T theme · P present</span>
-          <div className="flex items-center gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void addSlideAfterCurrent()}
-              disabled={!devPersistenceEnabled}
-              className={cn(
-                'h-7 min-h-7 gap-1 px-2 text-xs',
-                isDarkMode
-                  ? 'border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700 hover:text-zinc-100'
-                  : 'border-zinc-300 bg-zinc-100 text-zinc-700 hover:bg-zinc-200',
-              )}
-              title={
-                devPersistenceEnabled
-                  ? 'Add slide after current (saved to disk)'
-                  : 'Requires dev server (bun run dev) to save new slides'
-              }
-            >
-              <Plus className="w-3 h-3" />
-              Add Slide
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void addWorkingAreaToCurrent()}
-              disabled={hasWorkingArea || !devPersistenceEnabled}
-              className={cn(
-                'h-7 min-h-7 gap-1 px-2 text-xs',
-                isDarkMode
-                  ? 'border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700 hover:text-zinc-100'
-                  : 'border-zinc-300 bg-zinc-100 text-zinc-700 hover:bg-zinc-200',
-              )}
-              title={
-                hasWorkingArea
-                  ? 'Working area already exists for this slide'
-                  : devPersistenceEnabled
-                    ? 'Add working area to current slide (saved to disk)'
-                    : 'Requires dev server (bun run dev) to create working area files'
-              }
-            >
-              <Plus className="w-3 h-3" />
-              Add Working Area
-            </Button>
-            <span className={`text-xs ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
+        {/* Footer: equal side columns so slide controls stay visually centered */}
+        <div className="shrink-0 pb-6 px-10 pt-1 grid grid-cols-[1fr_auto_1fr] items-center gap-x-4 gap-y-2">
+          <span
+            className={`text-[10px] min-w-0 justify-self-start text-left ${isDarkMode ? 'text-zinc-600' : 'text-zinc-400'}`}
+          >
+            ← → nav · G go to · N notes · E source · Esc close · F flip · T theme · P present
+          </span>
+          <div className="flex items-center gap-2 justify-center shrink-0">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => void addSlideAfterCurrent()}
+                disabled={!devPersistenceEnabled}
+                className={`w-9 h-9 flex items-center justify-center rounded-full backdrop-blur-sm border transition-all duration-200 outline-none disabled:opacity-30 disabled:pointer-events-none ${
+                  isDarkMode
+                    ? 'bg-indigo-950/50 border-indigo-800/55 text-indigo-300/95 hover:bg-indigo-900/55 hover:border-indigo-700/60'
+                    : 'bg-indigo-50/95 border-indigo-200/90 text-indigo-800 hover:bg-indigo-100/95 hover:border-indigo-300'
+                }`}
+                title={
+                  devPersistenceEnabled
+                    ? 'Add slide after current (saved to disk)'
+                    : 'Requires dev server (bun run dev) to save new slides'
+                }
+                aria-label="Add slide"
+              >
+                <FilePlus className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => void addWorkingAreaToCurrent()}
+                disabled={hasWorkingArea || !devPersistenceEnabled}
+                className={`w-9 h-9 flex items-center justify-center rounded-full backdrop-blur-sm border transition-all duration-200 outline-none disabled:opacity-30 disabled:pointer-events-none ${
+                  isDarkMode
+                    ? 'bg-sky-950/45 border-sky-800/50 text-sky-300/95 hover:bg-sky-900/50 hover:border-sky-700/55'
+                    : 'bg-sky-50/95 border-sky-200/90 text-sky-800 hover:bg-sky-100/95 hover:border-sky-300'
+                }`}
+                title={
+                  hasWorkingArea
+                    ? 'Working area already exists for this slide'
+                    : devPersistenceEnabled
+                      ? 'Add working area to current slide (saved to disk)'
+                      : 'Requires dev server (bun run dev) to create working area files'
+                }
+                aria-label="Add working area"
+              >
+                <PanelsTopLeft className="w-4 h-4" />
+              </button>
+            </div>
+            <span className={`text-xs tabular-nums ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
               {currentSlide + 1} / {totalSlides}
             </span>
             <div className="flex gap-1.5">
@@ -1203,7 +1261,9 @@ function App() {
               ))}
             </div>
           </div>
-          <span className={`text-[10px] ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
+          <span
+            className={`text-[10px] min-w-0 justify-self-end text-right ${isDarkMode ? 'text-zinc-500' : 'text-zinc-400'}`}
+          >
             {effectiveDeckMeta?.author ? `☻ ${effectiveDeckMeta.author}` : '☻ Markdown Slider'}
             {effectiveDeckMeta?.date ? ` · ◈ ${effectiveDeckMeta.date}` : ''}
           </span>

@@ -7,6 +7,8 @@ export interface SlideData {
   deckId: string;
   content: string;
   type: 'md' | 'html';
+  /** Optional markdown from `decks/<deck>/<slideNN>/speaker.md`. */
+  speakerNotes?: string;
   workingArea?: {
     content: string;
     type: 'md' | 'html';
@@ -71,6 +73,12 @@ const waCssFiles = import.meta.glob('/decks/*/*/working-area/style.css', {
 }) as Record<string, string>;
 
 const waJsFiles = import.meta.glob('/decks/*/*/working-area/script.js', {
+  eager: true,
+  query: '?raw',
+  import: 'default',
+}) as Record<string, string>;
+
+const speakerMdFiles = import.meta.glob('/decks/*/*/speaker.md', {
   eager: true,
   query: '?raw',
   import: 'default',
@@ -168,7 +176,10 @@ function loadSlidesForDeck(deckId: string): SlideData[] {
       workingArea = { content: waContent, type: waType };
     }
 
-    return { index, id: slideId, deckId, content, type, workingArea };
+    const speakerPath = `/decks/${deckId}/${slideId}/speaker.md`;
+    const speakerNotes = speakerPath in speakerMdFiles ? speakerMdFiles[speakerPath] : undefined;
+
+    return { index, id: slideId, deckId, content, type, speakerNotes, workingArea };
   });
 }
 

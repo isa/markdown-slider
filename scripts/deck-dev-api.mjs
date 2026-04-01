@@ -30,7 +30,7 @@ function safeResolveUnderDeck(deckId, relativePath) {
 }
 
 const SAVE_REL_PATTERN =
-  /^metadata\.md$|^slide\d+\/slide\.(md|html)$|^slide\d+\/working-area\/slide\.(md|html)$/;
+  /^metadata\.md$|^slide\d+\/slide\.(md|html)$|^slide\d+\/working-area\/slide\.(md|html)$|^slide\d+\/speaker\.md$/;
 
 function naturalSort(a, b) {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
@@ -146,12 +146,16 @@ function loadSlideForDeck(deckId, slideFolderName, index) {
     workingArea = { type: 'html', content: waContent };
   }
 
+  const speakerPath = path.join(base, 'speaker.md');
+  const speakerNotes = fs.existsSync(speakerPath) ? readFileUtf8(speakerPath) : undefined;
+
   return {
     index,
     id: slideFolderName,
     deckId,
     content,
     type,
+    speakerNotes,
     workingArea,
   };
 }

@@ -34,6 +34,7 @@ markdown-slider/
 │   │   └── slide01/
 │   │       ├── slide.md
 │   │       ├── slide.html
+│   │       ├── speaker.md       # Optional per-slide speaker notes (markdown)
 │   │       └── working-area/
 │   │           ├── slide.md
 │   │           ├── slide.html
@@ -54,6 +55,7 @@ markdown-slider/
 - Deck metadata comes from `decks/<deckId>/metadata.md`.
 - Slide folders are naturally sorted (`slide01`, `slide02`, ..., `slide10`).
 - If both `slide.md` and `slide.html` exist in one slide folder, `slide.md` wins.
+- Optional **`speaker.md`** in each `slideNN/` folder holds markdown speaker notes. In the app, open them from the header (notes icon) or press **N**; they appear in a bottom sheet (**Esc** closes). Notes are **view-only** in the UI—edit the file in your editor (restart the dev server if you add new `speaker.md` files so Vite picks up the glob).
 
 ### Deck metadata (`metadata.md`)
 
