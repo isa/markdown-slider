@@ -1,0 +1,70 @@
+# Watermelon Sorbet — juicy pink, zesty yellow, cool mint, vibrant blue, deep navy (Lora + Manrope)
+# Use: theme: watermelon-sorbet
+
+id: watermelon-sorbet
+name: Watermelon Sorbet
+description: Palette #EF476F / #FFD166 / #06D6A0 / #118AB2 / #073B4C; Lora headings, Manrope body.
+
+align: left
+
+dark:
+  css:
+    --slide-font-heading: '"Lora", Georgia, serif'
+    --slide-font-body: '"Manrope", system-ui, sans-serif'
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 3rem
+    --slide-font-size-h2: 2.25rem
+    --slide-font-size-h3: 1.75rem
+    --slide-font-size-body: 1.25rem
+    --slide-line-height-body: "1.625"
+    --slide-text: "#F8FAFC"
+    --slide-text-muted: "#94C9D8"
+    --slide-heading-color: "#FFD166"
+    --slide-heading-h1-color: "#FFD166"
+    --slide-heading-h2-color: "#F8FAFC"
+    --slide-heading-h3-color: "#06D6A0"
+    --slide-accent: "#EF476F"
+    --slide-bg: transparent
+    --slide-bullet-color: "#06D6A0"
+    --slide-list-spacing: 0.75rem
+    --slide-image-radius: 0.75rem
+    --slide-image-shadow: 0 25px 50px -12px rgb(7 59 76 / 0.55)
+    --slide-image-max-width: min(100%, 36rem)
+    --slide-code-bg: "#052F3D"
+    --slide-code-text: "#FFD166"
+    --slide-blockquote-border: "#118AB2"
+    --slide-table-border: "#118AB2"
+    --slide-table-header-bg: "#073B4C"
+    --slide-column-gap: 1.25rem
+    --slide-entrance: none
+
+light:
+  css:
+    --slide-font-heading: '"Lora", Georgia, serif'
+    --slide-font-body: '"Manrope", system-ui, sans-serif'
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 3rem
+    --slide-font-size-h2: 2.25rem
+    --slide-font-size-h3: 1.75rem
+    --slide-font-size-body: 1.25rem
+    --slide-line-height-body: "1.625"
+    --slide-text: "#073B4C"
+    --slide-text-muted: "#118AB2"
+    --slide-heading-color: "#073B4C"
+    --slide-heading-h1-color: "#EF476F"
+    --slide-heading-h2-color: "#073B4C"
+    --slide-heading-h3-color: "#118AB2"
+    --slide-accent: "#EF476F"
+    --slide-bg: transparent
+    --slide-bullet-color: "#06D6A0"
+    --slide-list-spacing: 0.75rem
+    --slide-image-radius: 0.75rem
+    --slide-image-shadow: 0 20px 40px -12px rgb(7 59 76 / 0.15)
+    --slide-image-max-width: min(100%, 36rem)
+    --slide-code-bg: "#E8F7F4"
+    --slide-code-text: "#073B4C"
+    --slide-blockquote-border: "#EF476F"
+    --slide-table-border: "#B8E5EE"
+    --slide-table-header-bg: "#FFF5F7"
+    --slide-column-gap: 1.25rem
+    --slide-entrance: none

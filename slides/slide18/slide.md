@@ -1,5 +1,5 @@
 ---
-theme: ocean
+theme: default
 title: Bar chart (Recharts)
 subtitle: Grouped (v1–v3)
 barChart:

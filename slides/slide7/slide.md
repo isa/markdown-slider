@@ -1,5 +1,5 @@
 ---
-theme: serif-warm
+theme: default
 title: Typography theme
 subtitle: Headings use the preset’s serif stack
 ---

@@ -1,5 +1,5 @@
 ---
-theme: ocean
+theme: default
 title: Column layouts
 ---
 

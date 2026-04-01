@@ -1,5 +1,5 @@
 ---
-theme: serif-warm
+theme: default
 title: Images
 slide:
   imageRadius: "12px"

@@ -9,7 +9,10 @@ interface SlidePresenterProps {
   slideContent: string;
   slideType: 'md' | 'html';
   currentSlide: number;
+  deckDefaultTheme?: string;
   isDarkMode?: boolean;
+  /** Hides edit control and ignores source toggle while presenting. */
+  presentationMode?: boolean;
   onContentChange?: (content: string) => void;
   onSourceToggle?: (open: boolean) => void;
 }
@@ -18,7 +21,9 @@ export function SlidePresenter({
   slideContent,
   slideType,
   currentSlide,
+  deckDefaultTheme,
   isDarkMode = true,
+  presentationMode = false,
   onContentChange,
   onSourceToggle,
 }: SlidePresenterProps) {
@@ -48,7 +53,7 @@ export function SlidePresenter({
     if (slideType !== 'md') {
       return {
         body: '',
-        theme: parseSlideMarkdown('', isDarkMode).theme,
+        theme: parseSlideMarkdown('', isDarkMode, deckDefaultTheme).theme,
         title: undefined,
         subtitle: undefined,
         layout: 'content' as SlideLayout,
@@ -66,8 +71,8 @@ export function SlidePresenter({
         mermaidNodes: undefined,
       };
     }
-    return parseSlideMarkdown(slideContent, isDarkMode);
-  }, [slideContent, slideType, isDarkMode]);
+    return parseSlideMarkdown(slideContent, isDarkMode, deckDefaultTheme);
+  }, [slideContent, slideType, isDarkMode, deckDefaultTheme]);
 
   const imageSlideCssVars = useMemo((): CSSProperties => {
     if (layout !== 'image') return {};
@@ -90,7 +95,15 @@ export function SlidePresenter({
   prevSlideRef.current = currentSlide;
 
   useEffect(() => {
+    if (presentationMode && showSource) {
+      setShowSource(false);
+      onSourceToggle?.(false);
+    }
+  }, [presentationMode, showSource, onSourceToggle]);
+
+  useEffect(() => {
     const onToggleSource = () => {
+      if (presentationMode) return;
       setShowSource((prev) => {
         const next = !prev;
         onSourceToggle?.(next);
@@ -99,7 +112,7 @@ export function SlidePresenter({
     };
     window.addEventListener('markdown-slider:toggle-source', onToggleSource);
     return () => window.removeEventListener('markdown-slider:toggle-source', onToggleSource);
-  }, [onSourceToggle]);
+  }, [onSourceToggle, presentationMode]);
 
   const variants = {
     enter: (dir: number) => ({
@@ -121,21 +134,27 @@ export function SlidePresenter({
 
   const isCover = layout === 'cover';
   const isImage = layout === 'image';
+  const isQuote = layout === 'quote';
   const isDeckHeaderTop =
-    (layout === 'content' || layout === 'infographic') && Boolean(title);
+    (layout === 'content' || layout === 'infographic' || layout === 'quote') && Boolean(title);
 
   const rootClass = [
     'slide-root',
     'slide-prose',
     theme.rootClassName,
     theme.align &&
-    (layout === 'content' || layout === 'infographic' || layout === 'cover' || layout === 'image')
+    (layout === 'content' ||
+      layout === 'infographic' ||
+      layout === 'cover' ||
+      layout === 'image' ||
+      layout === 'quote')
       ? `slide-align--${theme.align}`
       : null,
     isDeckHeaderTop && 'slide-root--deck-header',
     isCover && 'slide-root--cover',
     isCover && coverBackgroundImage && 'slide-root--cover--fullbleed',
     isImage && 'slide-root--image',
+    isQuote && 'slide-root--quote',
   ]
     .filter(Boolean)
     .join(' ');
@@ -145,7 +164,7 @@ export function SlidePresenter({
   const motionShellClass =
     coverHasBg
       ? 'absolute inset-0 flex justify-center items-stretch p-0 overflow-hidden min-h-0'
-      : title || isCover || isImage
+      : title || isCover || isImage || isQuote
         ? 'absolute inset-0 flex justify-center items-stretch px-10 py-8 overflow-hidden min-h-0'
         : 'absolute inset-0 flex items-center justify-center px-10 py-8 overflow-hidden min-h-0';
 
@@ -154,24 +173,26 @@ export function SlidePresenter({
       className={`h-full w-full overflow-hidden flex transition-colors duration-300 ${isDarkMode ? 'bg-zinc-900' : 'bg-zinc-50'}`}
     >
       <div className="flex-1 min-w-0 h-full relative overflow-hidden" style={{ clipPath: 'inset(0 round 0)' }}>
-        <button
-          onClick={() => {
-            const next = !showSource;
-            setShowSource(next);
-            onSourceToggle?.(next);
-          }}
-          className={`absolute top-2 right-2 z-30 flex items-center justify-center rounded-md border transition-all duration-200 outline-none ${
-            showSource
-              ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
-              : isDarkMode
-                ? 'bg-zinc-800/80 border-zinc-700/50 text-zinc-500 hover:text-white hover:bg-zinc-700'
-                : 'bg-white/80 border-zinc-300 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200'
-          }`}
-          style={{ width: 28, height: 28 }}
-          title={showSource ? 'Close editor (Esc)' : 'Edit source (E)'}
-        >
-          <Code style={{ width: 14, height: 14 }} />
-        </button>
+        {!presentationMode ? (
+          <button
+            onClick={() => {
+              const next = !showSource;
+              setShowSource(next);
+              onSourceToggle?.(next);
+            }}
+            className={`absolute top-4 right-4 z-30 flex items-center justify-center rounded-md border transition-all duration-200 outline-none ${
+              showSource
+                ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
+                : isDarkMode
+                  ? 'bg-zinc-800/80 border-zinc-700/50 text-zinc-500 hover:text-white hover:bg-zinc-700'
+                  : 'bg-white/80 border-zinc-300 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200'
+            }`}
+            style={{ width: 28, height: 28 }}
+            title={showSource ? 'Close editor (Esc)' : 'Edit source (E)'}
+          >
+            <Code style={{ width: 14, height: 14 }} />
+          </button>
+        ) : null}
 
         <AnimatePresence mode="wait" custom={direction} initial={false}>
           <motion.div
@@ -263,6 +284,37 @@ export function SlidePresenter({
                     </div>
                     {imageCaption ? (
                       <p className="slide-figure-caption">{imageCaption}</p>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ) : isQuote ? (
+              <div className={rootClass} style={theme.cssVariables}>
+                {title ? (
+                  <header className="slide-deck-header slide-deck-header--quote">
+                    <div className="slide-deck-header__row slide-deck-header__row--quote">
+                      <span className="slide-deck-header__title slide-deck-header__title--quote">
+                        {title}
+                      </span>
+                    </div>
+                    <div className="slide-deck-header__rule" aria-hidden />
+                  </header>
+                ) : null}
+                <div className="slide-deck-body slide-deck-body--quote">
+                  <div className="slide-quote-stack">
+                    <SlideMarkdown
+                      markdown={body}
+                      lineChartData={lineChart}
+                      barChartData={barChart}
+                      pieChartData={pieChart}
+                      pieChartLegendPosition={pieChartLegendPosition}
+                      barChartStacked={barChartStacked}
+                      lineChartArea={lineChartArea}
+                      lineChartEndMarker={lineChartEndMarker}
+                      mermaidNodes={mermaidNodes}
+                    />
+                    {subtitle ? (
+                      <p className="slide-quote-attribution">{subtitle}</p>
                     ) : null}
                   </div>
                 </div>

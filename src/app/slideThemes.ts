@@ -12,10 +12,16 @@ export type SlideCssVars = Record<string, string>;
 export type SlideColorMode = 'light' | 'dark';
 
 /** Visual layout for markdown slides (YAML `layout:`). Default: `content`. */
-export type SlideLayout = 'content' | 'cover' | 'infographic' | 'image';
+export type SlideLayout = 'content' | 'cover' | 'infographic' | 'image' | 'quote';
 
 function parseSlideLayout(raw: unknown): SlideLayout {
-  if (raw === 'cover' || raw === 'infographic' || raw === 'image' || raw === 'content') {
+  if (
+    raw === 'cover' ||
+    raw === 'infographic' ||
+    raw === 'image' ||
+    raw === 'content' ||
+    raw === 'quote'
+  ) {
     return raw;
   }
   return 'content';
@@ -85,9 +91,13 @@ function mergeOverrides(base: SlideCssVars, slide?: Record<string, unknown>): Sl
 export function resolveSlideTheme(
   data: Record<string, unknown>,
   colorMode: SlideColorMode = 'dark',
+  deckDefaultTheme?: string,
 ): ResolvedSlideTheme {
   const requested = typeof data.theme === 'string' ? data.theme.trim() : '';
-  const themeId = requested && requested in PRESETS ? requested : 'default';
+  const requestedDeckTheme =
+    typeof deckDefaultTheme === 'string' && deckDefaultTheme.trim() ? deckDefaultTheme.trim() : '';
+  const themeCandidate = requested || requestedDeckTheme;
+  const themeId = themeCandidate && themeCandidate in PRESETS ? themeCandidate : 'default';
   const preset = PRESETS[themeId] ?? PRESETS.default;
   const slide = data.slide as Record<string, unknown> | undefined;
   const baseVars = colorMode === 'light' ? preset.varsLight : preset.varsDark;
@@ -116,6 +126,7 @@ export function resolveSlideTheme(
 export function parseSlideMarkdown(
   raw: string,
   isDarkMode = true,
+  deckDefaultTheme?: string,
 ): {
   body: string;
   theme: ResolvedSlideTheme;
@@ -151,7 +162,7 @@ export function parseSlideMarkdown(
   const d = data as Record<string, unknown>;
   const layout = parseSlideLayout(d.layout);
   const colorMode: SlideColorMode = isDarkMode ? 'dark' : 'light';
-  const theme = resolveSlideTheme(d, colorMode);
+  const theme = resolveSlideTheme(d, colorMode, deckDefaultTheme);
   const titleRaw = d.title;
   const subtitleRaw = d.subtitle;
   const title = typeof titleRaw === 'string' && titleRaw.trim() ? titleRaw.trim() : undefined;

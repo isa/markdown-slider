@@ -1,10 +1,10 @@
 ---
-theme: ocean
+theme: default
 title: Mermaid diagram
 subtitle: Theme-colored flowchart
 ---
 
-Diagram colors follow the **ocean** theme (`--slide-accent`, text, code surface, borders).
+Diagram colors follow the active slide theme (`--slide-accent`, text, code surface, borders).
 
 ```mermaid
 flowchart TD

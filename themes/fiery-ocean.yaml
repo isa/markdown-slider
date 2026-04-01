@@ -1,0 +1,70 @@
+# Fiery Ocean — crimson, firelight cream, indigo sea, sky blue (Ovo + Mulish)
+# Use: theme: fiery-ocean
+
+id: fiery-ocean
+name: Fiery Ocean
+description: Palette #780000 / #C1121F / #FDF0D5 / #003049 / #669BBC; Ovo headings, Mulish body.
+
+align: left
+
+dark:
+  css:
+    --slide-font-heading: '"Ovo", Georgia, serif'
+    --slide-font-body: '"Mulish", system-ui, sans-serif'
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 3rem
+    --slide-font-size-h2: 2.25rem
+    --slide-font-size-h3: 1.75rem
+    --slide-font-size-body: 1.25rem
+    --slide-line-height-body: "1.625"
+    --slide-text: "#FDF0D5"
+    --slide-text-muted: "#669BBC"
+    --slide-heading-color: "#FDF0D5"
+    --slide-heading-h1-color: "#C1121F"
+    --slide-heading-h2-color: "#FDF0D5"
+    --slide-heading-h3-color: "#669BBC"
+    --slide-accent: "#C1121F"
+    --slide-bg: transparent
+    --slide-bullet-color: "#C1121F"
+    --slide-list-spacing: 0.75rem
+    --slide-image-radius: 0.75rem
+    --slide-image-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.45)
+    --slide-image-max-width: min(100%, 36rem)
+    --slide-code-bg: "#002235"
+    --slide-code-text: "#FDF0D5"
+    --slide-blockquote-border: "#669BBC"
+    --slide-table-border: "#669BBC"
+    --slide-table-header-bg: "#003049"
+    --slide-column-gap: 1.25rem
+    --slide-entrance: none
+
+light:
+  css:
+    --slide-font-heading: '"Ovo", Georgia, serif'
+    --slide-font-body: '"Mulish", system-ui, sans-serif'
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 3rem
+    --slide-font-size-h2: 2.25rem
+    --slide-font-size-h3: 1.75rem
+    --slide-font-size-body: 1.25rem
+    --slide-line-height-body: "1.625"
+    --slide-text: "#003049"
+    --slide-text-muted: "#669BBC"
+    --slide-heading-color: "#003049"
+    --slide-heading-h1-color: "#780000"
+    --slide-heading-h2-color: "#003049"
+    --slide-heading-h3-color: "#669BBC"
+    --slide-accent: "#C1121F"
+    --slide-bg: transparent
+    --slide-bullet-color: "#C1121F"
+    --slide-list-spacing: 0.75rem
+    --slide-image-radius: 0.75rem
+    --slide-image-shadow: 0 20px 40px -12px rgb(0 48 73 / 0.15)
+    --slide-image-max-width: min(100%, 36rem)
+    --slide-code-bg: "#FDF0D5"
+    --slide-code-text: "#003049"
+    --slide-blockquote-border: "#C1121F"
+    --slide-table-border: "#B8D4E8"
+    --slide-table-header-bg: "#FDF8ED"
+    --slide-column-gap: 1.25rem
+    --slide-entrance: none

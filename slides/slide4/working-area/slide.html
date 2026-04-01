@@ -1,17 +1,33 @@
 <!DOCTYPE html>
-<html>
+<html data-theme="dark">
 <head>
 <style>
+  html[data-theme="dark"] {
+    --bg: #1a1a1a;
+    --fg: #e5e5e5;
+    --card: #2a2a2a;
+    --card-border: #333;
+    --counter: #fafafa;
+  }
+  html[data-theme="light"] {
+    --bg: #f4f4f5;
+    --fg: #18181b;
+    --card: #ffffff;
+    --card-border: #e4e4e7;
+    --counter: #18181b;
+    --card-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
   body {
     margin: 0; padding: 2rem; font-family: sans-serif;
-    background: #1a1a1a; color: #e5e5e5;
+    background: var(--bg); color: var(--fg);
   }
   .card {
-    background: #2a2a2a; border-radius: 12px; padding: 1.5rem;
-    margin-bottom: 1rem; border: 1px solid #333;
+    background: var(--card); border-radius: 12px; padding: 1.5rem;
+    margin-bottom: 1rem; border: 1px solid var(--card-border);
+    box-shadow: var(--card-shadow, none);
   }
-  .counter { font-size: 3rem; text-align: center; margin: 1rem 0; }
-  .buttons { display: flex; gap: 0.75rem; justify-content: center; }
+  .counter { font-size: 3rem; text-align: center; margin: 1rem 0; color: var(--counter); }
+  .buttons { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
   button {
     padding: 0.6rem 1.5rem; border: none; border-radius: 8px;
     font-size: 1rem; cursor: pointer; color: white;

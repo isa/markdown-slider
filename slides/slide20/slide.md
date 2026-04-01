@@ -1,5 +1,5 @@
 ---
-theme: ocean
+theme: default
 title: Pie chart (Recharts)
 subtitle: 5 slices sample
 pieChart:

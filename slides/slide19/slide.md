@@ -1,5 +1,5 @@
 ---
-theme: ocean
+theme: default
 title: Stacked bars
 subtitle: barChartStacked
 barChartStacked: true

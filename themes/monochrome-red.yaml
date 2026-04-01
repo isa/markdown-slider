@@ -1,0 +1,70 @@
+# Monochrome Red — smoky grays, crisp pale, crimson accents (Oswald + Montserrat)
+# Use: theme: monochrome-red
+
+id: monochrome-red
+name: Monochrome Red
+description: Palette #2B2D42 / #8D99AE / #EDF2F4 / #EF233C / #D80032; Oswald headings, Montserrat body.
+
+align: left
+
+dark:
+  css:
+    --slide-font-heading: '"Oswald", system-ui, sans-serif'
+    --slide-font-body: '"Montserrat", system-ui, sans-serif'
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 3rem
+    --slide-font-size-h2: 2.25rem
+    --slide-font-size-h3: 1.75rem
+    --slide-font-size-body: 1.25rem
+    --slide-line-height-body: "1.625"
+    --slide-text: "#EDF2F4"
+    --slide-text-muted: "#8D99AE"
+    --slide-heading-color: "#EDF2F4"
+    --slide-heading-h1-color: "#EF233C"
+    --slide-heading-h2-color: "#EDF2F4"
+    --slide-heading-h3-color: "#8D99AE"
+    --slide-accent: "#EF233C"
+    --slide-bg: transparent
+    --slide-bullet-color: "#EF233C"
+    --slide-list-spacing: 0.75rem
+    --slide-image-radius: 0.75rem
+    --slide-image-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5)
+    --slide-image-max-width: min(100%, 36rem)
+    --slide-code-bg: "#1E202F"
+    --slide-code-text: "#EDF2F4"
+    --slide-blockquote-border: "#D80032"
+    --slide-table-border: "#8D99AE"
+    --slide-table-header-bg: "#2B2D42"
+    --slide-column-gap: 1.25rem
+    --slide-entrance: none
+
+light:
+  css:
+    --slide-font-heading: '"Oswald", system-ui, sans-serif'
+    --slide-font-body: '"Montserrat", system-ui, sans-serif'
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 3rem
+    --slide-font-size-h2: 2.25rem
+    --slide-font-size-h3: 1.75rem
+    --slide-font-size-body: 1.25rem
+    --slide-line-height-body: "1.625"
+    --slide-text: "#2B2D42"
+    --slide-text-muted: "#8D99AE"
+    --slide-heading-color: "#2B2D42"
+    --slide-heading-h1-color: "#D80032"
+    --slide-heading-h2-color: "#2B2D42"
+    --slide-heading-h3-color: "#8D99AE"
+    --slide-accent: "#EF233C"
+    --slide-bg: transparent
+    --slide-bullet-color: "#EF233C"
+    --slide-list-spacing: 0.75rem
+    --slide-image-radius: 0.75rem
+    --slide-image-shadow: 0 20px 40px -12px rgb(43 45 66 / 0.15)
+    --slide-image-max-width: min(100%, 36rem)
+    --slide-code-bg: "#EDF2F4"
+    --slide-code-text: "#2B2D42"
+    --slide-blockquote-border: "#D80032"
+    --slide-table-border: "#C5CBD4"
+    --slide-table-header-bg: "#F5F7F9"
+    --slide-column-gap: 1.25rem
+    --slide-entrance: none

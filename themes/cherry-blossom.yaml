@@ -1,0 +1,70 @@
+# Cherry Blossom — midnight, cherry red, slate, pale mint, airy white (Lusitana + Raleway)
+# Use: theme: cherry-blossom
+
+id: cherry-blossom
+name: Cherry Blossom
+description: Palette #0C120C / #C20114 / #6D7275 / #C7D6D5 / #ECEBF3; Lusitana headings, Raleway body.
+
+align: left
+
+dark:
+  css:
+    --slide-font-heading: '"Lusitana", Georgia, serif'
+    --slide-font-body: '"Raleway", system-ui, sans-serif'
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 3rem
+    --slide-font-size-h2: 2.25rem
+    --slide-font-size-h3: 1.75rem
+    --slide-font-size-body: 1.25rem
+    --slide-line-height-body: "1.625"
+    --slide-text: "#ECEBF3"
+    --slide-text-muted: "#6D7275"
+    --slide-heading-color: "#ECEBF3"
+    --slide-heading-h1-color: "#C20114"
+    --slide-heading-h2-color: "#ECEBF3"
+    --slide-heading-h3-color: "#C7D6D5"
+    --slide-accent: "#C20114"
+    --slide-bg: transparent
+    --slide-bullet-color: "#C20114"
+    --slide-list-spacing: 0.75rem
+    --slide-image-radius: 0.75rem
+    --slide-image-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.45)
+    --slide-image-max-width: min(100%, 36rem)
+    --slide-code-bg: "#0A0F0A"
+    --slide-code-text: "#C7D6D5"
+    --slide-blockquote-border: "#C20114"
+    --slide-table-border: "#6D7275"
+    --slide-table-header-bg: "#0C120C"
+    --slide-column-gap: 1.25rem
+    --slide-entrance: none
+
+light:
+  css:
+    --slide-font-heading: '"Lusitana", Georgia, serif'
+    --slide-font-body: '"Raleway", system-ui, sans-serif'
+    --slide-font-mono: ui-monospace, monospace
+    --slide-font-size-h1: 3rem
+    --slide-font-size-h2: 2.25rem
+    --slide-font-size-h3: 1.75rem
+    --slide-font-size-body: 1.25rem
+    --slide-line-height-body: "1.625"
+    --slide-text: "#0C120C"
+    --slide-text-muted: "#6D7275"
+    --slide-heading-color: "#0C120C"
+    --slide-heading-h1-color: "#C20114"
+    --slide-heading-h2-color: "#0C120C"
+    --slide-heading-h3-color: "#6D7275"
+    --slide-accent: "#C20114"
+    --slide-bg: transparent
+    --slide-bullet-color: "#C20114"
+    --slide-list-spacing: 0.75rem
+    --slide-image-radius: 0.75rem
+    --slide-image-shadow: 0 20px 40px -12px rgb(12 18 12 / 0.12)
+    --slide-image-max-width: min(100%, 36rem)
+    --slide-code-bg: "#ECEBF3"
+    --slide-code-text: "#0C120C"
+    --slide-blockquote-border: "#C20114"
+    --slide-table-border: "#C7D6D5"
+    --slide-table-header-bg: "#F5F4FA"
+    --slide-column-gap: 1.25rem
+    --slide-entrance: none

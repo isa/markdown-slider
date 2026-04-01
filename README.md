@@ -1,6 +1,6 @@
 # Markdown Slides
 
-A Vite + React presentation app: markdown slides with YAML frontmatter, optional HTML slides, theme packs, charts (Recharts), Mermaid diagrams, multi-column layouts, and an optional per-slide **working area** (markdown or HTML preview plus a demo terminal).
+A Vite + React presentation app for markdown and HTML slides with theme packs, charts (Recharts), Mermaid diagrams, multi-column layouts, and optional per-slide working areas.
 
 ## Requirements
 
@@ -16,162 +16,127 @@ bun install
 |--------|-------------|
 | `bun run dev` | Start the Vite dev server |
 | `bun run build` | Production build to `dist/` |
+| `bun run deck:create --id deck01 --title "Deck 01"` | Scaffold a new deck |
+| `bun run deck:export --id deck01 --out ./deck01.zip` | Export one deck to zip |
+| `bun run deck:import --zip ./deck01.zip` | Import deck zip into `decks/` |
 
-Restart the dev server after adding new files under `slides/` or `themes/` so Vite’s glob imports pick them up.
+Restart the dev server after adding new files under `decks/` or `themes/` so Vite's glob imports pick them up.
 
 ---
 
 ## Folder structure
 
-```
+```text
 markdown-slider/
-├── slides/                    # One folder per slide (see below)
-│   └── slideN/
-│       ├── slide.md           # Preferred slide source (YAML frontmatter + markdown)
-│       ├── slide.html         # Alternative: full HTML document in an iframe (if no slide.md)
-│       └── working-area/      # Optional; only if this slide has a “working area”
-│           ├── slide.md       # or slide.html (md wins if both exist)
-│           ├── style.css      # Optional: inlined into the HTML working-area document head
-│           └── script.js      # Optional: inlined at end of body
-├── themes/                    # Theme presets (`*.yaml`); `_*.yaml` files are ignored
-│   ├── _template.yaml         # Copy to create a new theme
-│   └── README.md              # Theme file format and token reference
-├── src/                       # App source (React, styles, slide loading)
-└── README.md                  # This file
+├── decks/
+│   ├── sample-deck/           # Tracked sample deck
+│   │   ├── metadata.md        # Deck metadata frontmatter
+│   │   └── slide01/
+│   │       ├── slide.md
+│   │       ├── slide.html
+│   │       └── working-area/
+│   │           ├── slide.md
+│   │           ├── slide.html
+│   │           ├── style.css
+│   │           └── script.js
+│   └── <your-local-decks>/    # Usually gitignored
+├── themes/                    # Theme presets (`*.yaml`); `_*.yaml` ignored
+├── src/
+└── scripts/deck-cli.mjs
 ```
 
-### How slides are discovered
+### Deck and slide discovery
 
-- Every subdirectory of `slides/` that contains **`slide.md`** or **`slide.html`** becomes one slide.
-- Folders are ordered **naturally** (`slide1`, `slide2`, … `slide10`).
-- If both `slide.md` and `slide.html` exist in the same folder, **`slide.md` wins**.
+- App starts on a deck picker screen.
+- A deck is discovered from `decks/<deckId>/` with at least one `slideNN/slide.md` or `slide.html`.
+- Deck metadata comes from `decks/<deckId>/metadata.md`.
+- Slide folders are naturally sorted (`slide01`, `slide02`, ..., `slide10`).
+- If both `slide.md` and `slide.html` exist in one slide folder, `slide.md` wins.
+
+### Deck metadata (`metadata.md`)
+
+```yaml
+---
+title: Team Update
+author: Jane Doe
+date: 2026-03-31
+defaultTheme: default
+description: Weekly roadmap sync
+tags:
+  - weekly
+  - roadmap
+---
+```
+
+`defaultTheme` is applied when a slide omits `theme` in its frontmatter.
 
 ### Working area
 
-- If `slides/slideN/working-area/slide.md` or `slide.html` exists, that slide has a **working area**.
-- Use the header control or **F** to flip between the main slide and the working area (only when a working area exists).
-- For **HTML** working areas, optional `style.css` and `script.js` are inlined into the document at build time.
+- If `decks/<deckId>/slideNN/working-area/slide.md` or `slide.html` exists, that slide has a working area.
+- Use the header control or **F** to flip between main slide and working area.
+- For HTML working areas, optional `style.css` and `script.js` are inlined at build time.
 
 ---
 
 ## Themes
 
-Slide appearance comes from YAML presets in `themes/`. Reference a theme in frontmatter:
+Slide appearance comes from YAML files in `themes/`. **default** uses Libre Baskerville + Libre Franklin with the navy/slate/coral palette. **watermelon-sorbet** uses Lora + Manrope with the Watermelon Sorbet palette. **rustic-charm** uses Montserrat + Nunito with the Rustic Charm palette. **monochrome-red** uses Oswald + Montserrat with the Monochrome Red palette. **cherry-blossom** uses Lusitana + Raleway with the Cherry Blossom palette (midnight, cherry red, slate, pale mint, off-white). **fiery-ocean** uses Ovo + Mulish with the Fiery Ocean palette (dark red, bright red, cream, indigo, sky blue). Reference in frontmatter:
 
 ```yaml
-theme: ocean
+theme: default
+# or
+theme: watermelon-sorbet
+# or
+theme: rustic-charm
+# or
+theme: monochrome-red
+# or
+theme: cherry-blossom
+# or
+theme: fiery-ocean
 ```
 
-**Built-in theme ids** (from `themes/*.yaml`, excluding `_template`):  
-`default`, `ocean`, `paper`, `high-contrast`, `serif-warm`, `stagger`.
-
-- The app’s **sun/moon** control toggles **light vs dark chrome**; each theme supplies tokens for both modes (`dark:` / `light:` in the YAML).
-- Invalid or missing `theme:` falls back to **`default`**.
-- Authoring new themes, token names, and `dark` / `light` structure are documented in [`themes/README.md`](themes/README.md).
-
-### Frontmatter: `theme` and per-slide overrides
-
-- Top-level **`align`**: `left` | `center` | `right` — whole-slide alignment (also configurable under nested `slide:` — see below).
-- Nested **`slide:`** — optional camelCase overrides merged onto the active theme (fonts, colors, spacing, etc.). Keys include:  
-  `fontHeading`, `fontBody`, `fontMono`, `fontSizeH1`, `fontSizeH2`, `fontSizeH3`, `fontSizeBody`, `lineHeightBody`, `text`, `textMuted`, `headingColor`, `headingH1Color`, `headingH2Color`, `headingH3Color`, `headingWeight1`, `headingWeight2`, `headingWeight3`, `accent`, `bg`, `bulletColor`, `listSpacing`, `imageRadius`, `imageShadow`, `imageMaxWidth`, `codeBg`, `codeText`, `blockquoteBorder`, `tableBorder`, `tableHeaderBg`, `columnGap`, and **`align`**.
-- **`slide.entrance: stagger`** (or theme YAML setting `--slide-entrance: stagger`) applies the staggered entrance animation class.
+If `theme` is missing on a slide, deck `defaultTheme` is used, then fallback `default`.
 
 ---
 
-## Frontmatter reference (markdown slides)
+## Import / Export
 
-YAML between `---` delimiters. The markdown **body** is everything after the frontmatter.
+- Create a deck with one starter slide:
 
-### Layout and titles
+  ```bash
+  bun run deck:create --id deck01 --title "Deck 01" --author "You" --default-theme default
+  ```
 
-| Key | Description |
-|-----|-------------|
-| `layout` | `content` (default), `cover`, `infographic`, or `image` |
-| `title` | Optional deck title shown in the slide chrome (position varies by layout) |
-| `subtitle` | Optional subtitle; **not** shown for `infographic` or `image` layouts |
-| `theme` | Theme id from `themes/*.yaml` |
-| `align` | `left` \| `center` \| `right` — whole-slide alignment |
-| `backgroundImage` | URL string; used with **`layout: cover`** for a full-bleed background photo |
-| `caption` | With **`layout: image`**, caption below the figure |
-| `imageWidth` | With **`layout: image`**, CSS length for max width (e.g. `80%`, `28rem`) |
-| `imageHeight` | With **`layout: image`**, CSS length for max height (e.g. `50vh`, `400px`) |
+- Export a deck:
 
-### Charts (data in YAML, placeholders in markdown)
+  ```bash
+  bun run deck:export --id deck01 --out ./deck01.zip
+  ```
 
-Add arrays under frontmatter and place an **empty** `<div>` in the body where the chart should render:
+- Import a deck:
 
-| Frontmatter | Placeholder in markdown | Purpose |
-|-------------|-------------------------|---------|
-| `lineChart:` | `<div class="slide-embed-line-chart"></div>` | Line chart: first column = X axis; further columns = numeric series (up to five series) |
-| `barChart:` | `<div class="slide-embed-bar-chart"></div>` | Bar chart: same row shape as line charts |
-| `pieChart:` | `<div class="slide-embed-pie-chart"></div>` | Rows with category + value (see sample slides for `label` / `value`) |
-| `barChartStacked` | — | `true` / `false` — stacked vs grouped bars |
-| `pieChartLegendPosition` | — | `left` \| `right` \| `bottom` (aliases: `pieLegendPosition`, `pie_chart_legend_position`) |
-| `lineChartArea` or `area` | — | `true` (default) — filled area under lines; `false` — lines only |
-| `lineChartEndMarker` or `lineEndMarker` | — | `arrow`, `circle`, `openCircle`, or `none` — marker at last point per series |
+  ```bash
+  bun run deck:import --zip ./deck01.zip
+  ```
 
-### Mermaid
-
-- Use a fenced code block with language **`mermaid`** in the markdown body.
-- Optional frontmatter: **`mermaidNodes`**: `filled` (default) or `outline` (stroke-only flowchart boxes).
-
-### HTML slides
-
-- Use `slide.html` instead of `slide.md` for a full HTML document rendered in a **sandboxed iframe** (`allow-scripts`).
-- Frontmatter-based themes and markdown features do not apply unless you embed them yourself.
-
----
-
-## Markdown features
-
-- **GitHub-flavored Markdown** (tables, task lists, strikethrough, etc.) via `remark-gfm`.
-- **Raw HTML** in markdown is allowed but **sanitized**; allowed patterns include slide layout classes such as `slide-align--left` / `slide-align--center` / `slide-align--right` on a wrapper `div`.
-- **Fenced code blocks** with a language get syntax highlighting; inline code can use `<code class="language-ts">…</code>` for highlight classes.
-- **Images** in markdown respect theme variables for radius and shadow.
-- **Columns** — multi-column cells with full markdown in each cell:
-
-  ````text
-  @@@columns:2
-  @@cell
-  First column…
-  @@cell
-  Second column…
-  @@@
-  ````
-
-  Use `@@@columns:N` where `N` is 1–4. Legacy HTML column markup may still work; prefer `@@@columns` for rich cells.
-
----
-
-## Keyboard shortcuts
-
-Global shortcuts apply when focus is **not** in a text field (the source editor, inputs, etc.).
-
-| Key | Action |
-|-----|--------|
-| **→** or **Space** | Next slide |
-| **←** | Previous slide |
-| **G** | Open “go to slide” (type 1-based index, **Enter** to jump, **Esc** to cancel) |
-| **E** | Toggle source editor for the current view (slide or working-area preview) |
-| **F** | Flip between main slide and working area (only if that slide has a working area) |
-| **T** | Toggle app light / dark mode |
-
-With the **go to slide** dialog open, **Esc** closes it; arrow keys and space do not change slides until the dialog is closed.
-
-In the **source editor**, **Esc** closes the editor (see button tooltips on the slide card).
+Deck id collisions are auto-resolved by suffixing (`-2`, `-3`, ...).
 
 ---
 
 ## UI overview
 
-- **Navigation**: side arrows, footer **dot** indicators (click to jump), and keyboard shortcuts above.
-- **Theme**: sun/moon in the title bar — switches slide token sets (dark vs light) for all themed markdown slides.
-- **Flip** (rotate icon): switches to the working area when defined.
-- **Per-slide source**: code button on the slide — edit raw `slide.md` / `slide.html` in the session (changes are in-memory until you copy them out).
+- **Deck picker first screen**: open existing deck or generate a creation command.
+- **Navigation**: side arrows, footer dots, and keyboard shortcuts.
+- **Theme toggle**: sun/moon switches light vs dark mode.
+- **Flip**: switches to working area when available.
+- **Add Slide**: inserts a new slide immediately after current slide (session-only).
+- **Add Working Area**: adds a working area to the current slide (session-only).
+- **Per-slide source**: code button edits raw `slide.md` / `slide.html` in-memory.
 
 ---
 
 ## See also
 
-- [`themes/README.md`](themes/README.md) — creating and editing theme YAML files
-- Example decks under `slides/slide*/slide.md` for alignment, columns, charts, Mermaid, and layouts
+- [`themes/README.md`](themes/README.md) for theme authoring
+- `decks/sample-deck/` for the tracked example deck

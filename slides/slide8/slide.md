@@ -1,5 +1,5 @@
 ---
-theme: ocean
+theme: default
 title: Color scheme
 subtitle: Cyan accent on cool blue-gray text
 ---

@@ -1,5 +1,7 @@
 ---
-theme: stagger
+theme: default
+slide:
+  entrance: stagger
 title: Content animations
 subtitle: fading in/out
 ---

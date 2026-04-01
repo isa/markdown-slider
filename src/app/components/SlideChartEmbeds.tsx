@@ -60,7 +60,86 @@ const BAR_GROUPED_GROW_MS = 1400;
 const BAR_STACKED_SEGMENT_MS = 380;
 const BAR_STAGGER_MS = 72;
 const BAR_SERIES_OFFSET_MS = 55;
+/**
+ * Bar chart width (the outer block Recharts measures) is deterministic:
+ *   widthPx ≈ nCategories × pitchPx + BAR_CHART_SVG_WIDTH_CHROME_PX
+ * then × SLIDE_CHART_W_SCALE (keep in sync with `.slide-chart-embed { --slide-chart-w-scale }` in CSS).
+ * `pitchPx` is at least `BAR_CHART_PX_PER_CATEGORY` and may grow so each bar reaches `BAR_MIN_WIDTH_PX`
+ * (Recharts `getBarPosition` in `ChartUtils`: grouped series split each category band).
+ */
+const BAR_CHART_PX_PER_CATEGORY = 68;
+/** Minimum horizontal bar thickness (px); widens the chart when grouped/stack math would go below this. */
+const BAR_MIN_WIDTH_PX = 32;
+const BAR_CHART_SVG_WIDTH_CHROME_PX = 56;
+/**
+ * Multiplier on the computed bar-chart block width (SVG). When > 1, increase `barCategoryGap`
+ * proportionally so `share × band` stays ~constant (bars don’t get wider—extra space is gutters).
+ */
+const BAR_CHART_WIDTH_STRETCH = 1.25;
+/** Sync with `slide-content.css` `.slide-chart-embed { --slide-chart-w-scale }`. */
+const SLIDE_CHART_W_SCALE = 1;
+/** Room inside the SVG for axis ticks/labels so they don’t sit flush against prose above/below. */
+const RECHARTS_CARTESIAN_MARGIN = { top: 12, right: 12, left: -8, bottom: 22 } as const;
 const PATH_ANIM_MS = 780;
+
+/** Align with `barCategoryGap` / `barGap` in `SlideBarChartEmbed` layout. */
+const BAR_LAYOUT_CATEGORY_GAP = 0.06;
+
+function barGapFractionForSeries(nSeries: number): number {
+  if (nSeries < 2) return 0;
+  return nSeries >= 3 ? 0.01 : 0.02;
+}
+
+/**
+ * Min px per category on the outer width so Recharts `originalSize` (see `getBarPosition`) is ≥ BAR_MIN_WIDTH_PX.
+ * Stacked / single: one horizontal bar per category (share = 1 − 2×categoryGap).
+ * Grouped: share = (1 − 2×categoryGap − (n−1)×barGap) / n.
+ */
+function barPitchPxForMinBarWidth(nSeries: number, stacked: boolean): number {
+  const g = barGapFractionForSeries(nSeries);
+  let share: number;
+  if (stacked || nSeries <= 1) {
+    share = 1 - 2 * BAR_LAYOUT_CATEGORY_GAP;
+  } else {
+    share = (1 - 2 * BAR_LAYOUT_CATEGORY_GAP - (nSeries - 1) * g) / nSeries;
+  }
+  const minBand = BAR_MIN_WIDTH_PX / Math.max(share, 1e-6);
+  return Math.max(BAR_CHART_PX_PER_CATEGORY, Math.ceil(minBand));
+}
+
+/**
+ * When outer width is multiplied by `stretch`, increase per-side category padding so Recharts
+ * `originalSize ≈ share × band` stays ~unchanged (same bar thickness, wider gutters).
+ */
+function barCategoryGapFractionForStretch(
+  stretch: number,
+  nSeries: number,
+  stacked: boolean,
+): number {
+  const g0 = BAR_LAYOUT_CATEGORY_GAP;
+  if (stretch <= 1) return g0;
+  const bg = barGapFractionForSeries(nSeries);
+  let shareBase: number;
+  if (stacked || nSeries <= 1) {
+    shareBase = 1 - 2 * g0;
+  } else {
+    shareBase = (1 - 2 * g0 - (nSeries - 1) * bg) / nSeries;
+  }
+  const shareTarget = shareBase / stretch;
+  let g1: number;
+  if (stacked || nSeries <= 1) {
+    g1 = (1 - shareTarget) / 2;
+  } else {
+    g1 = (1 - (nSeries - 1) * bg - nSeries * shareTarget) / 2;
+  }
+  return Math.min(0.45, Math.max(g0, g1));
+}
+
+function barCategoryGapProp(stretch: number, nSeries: number, stacked: boolean): string {
+  const frac = barCategoryGapFractionForStretch(stretch, nSeries, stacked);
+  const pct = Math.round(frac * 1000) / 10;
+  return `${pct}%`;
+}
 
 /**
  * Same as Recharts `Rectangle` path (corner order matches Bar `radius`).
@@ -411,6 +490,23 @@ function valueExtentForSeries(rows: SlideChartRow[], seriesKeys: string[]): { mi
  * Pick series closest to the pointer in the vertical direction.
  * Prefer rendered point Y from Recharts (`pixelYByDataKey`); fallback uses raw data extent (can disagree with axis padding).
  */
+/** Recharts uses stroke for Line tooltip color; placeholder lines use `stroke="transparent"` (end-marker mode). */
+function resolveLineTooltipDisplayColor(
+  picked: LineTooltipPayloadEntry,
+  seriesKeys: string[] | undefined,
+): string {
+  const raw = picked.color;
+  if (typeof raw === 'string' && raw.trim() !== '' && raw.toLowerCase() !== 'transparent') {
+    return raw;
+  }
+  const dk = picked.dataKey;
+  if (dk != null && seriesKeys?.length) {
+    const idx = seriesKeys.findIndex((k) => k === dk || String(k) === String(dk));
+    if (idx >= 0) return chartSeriesColor(idx);
+  }
+  return 'var(--slide-text)';
+}
+
 function pickClosestLinePayload(
   payload: LineTooltipPayloadEntry[],
   coordinate: { x?: number; y?: number } | undefined,
@@ -470,9 +566,20 @@ function LineChartSingleTooltipContent(props: {
   valueMax: number;
   onHoverEntry: (entry: LineChartLegendLine | null) => void;
   geometryRef: RefObject<LineChartGeometrySnapshot | null>;
+  seriesKeys?: string[];
 }) {
-  const { active, payload, label, coordinate, viewBox, valueMin, valueMax, onHoverEntry, geometryRef } =
-    props;
+  const {
+    active,
+    payload,
+    label,
+    coordinate,
+    viewBox,
+    valueMin,
+    valueMax,
+    onHoverEntry,
+    geometryRef,
+    seriesKeys,
+  } = props;
 
   const pixelYByDataKey = (() => {
     const g = geometryRef.current;
@@ -489,12 +596,29 @@ function LineChartSingleTooltipContent(props: {
     const name = String(picked.name ?? '');
     const value = picked.value != null ? String(picked.value) : '';
     const labelStr = label != null ? String(label) : '';
-    onHoverEntry({ name, value, color: picked.color, label: labelStr });
-  }, [active, payload, label, coordinate, viewBox, valueMin, valueMax, onHoverEntry, pixelYByDataKey]);
+    onHoverEntry({
+      name,
+      value,
+      color: resolveLineTooltipDisplayColor(picked, seriesKeys),
+      label: labelStr,
+    });
+  }, [
+    active,
+    payload,
+    label,
+    coordinate,
+    viewBox,
+    valueMin,
+    valueMax,
+    onHoverEntry,
+    pixelYByDataKey,
+    seriesKeys,
+  ]);
 
   if (!active || !payload?.length) return null;
   const picked = pickClosestLinePayload(payload, coordinate, viewBox, valueMin, valueMax, pixelYByDataKey);
   const labelStr = label != null ? String(label) : '';
+  const displayColor = resolveLineTooltipDisplayColor(picked, seriesKeys);
   return (
     <div
       className="slide-chart-tooltip-single"
@@ -506,7 +630,7 @@ function LineChartSingleTooltipContent(props: {
       {labelStr ? (
         <div style={{ color: 'var(--slide-text-muted)', fontSize: '0.7rem', marginBottom: 4 }}>{labelStr}</div>
       ) : null}
-      <div style={{ color: picked.color ?? 'var(--slide-text)', fontWeight: 600 }}>
+      <div style={{ color: displayColor, fontWeight: 600 }}>
         <span>{picked.name}</span>
         <span style={{ color: 'var(--slide-text-muted)', fontWeight: 400 }}> : </span>
         <span>{picked.value}</span>
@@ -935,7 +1059,7 @@ export function SlideLineChartEmbed({
     >
       <div className="slide-chart-embed__chart">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={chartData} margin={{ top: 8, right: 12, left: -8, bottom: 0 }}>
+          <ComposedChart data={chartData} margin={RECHARTS_CARTESIAN_MARGIN}>
             <CartesianGrid
               strokeDasharray="3 3"
               stroke="color-mix(in srgb, var(--slide-text-muted) 35%, transparent)"
@@ -971,6 +1095,7 @@ export function SlideLineChartEmbed({
                   valueMax={valueExtent.max}
                   onHoverEntry={onLegendHover}
                   geometryRef={lineChartGeometryRef}
+                  seriesKeys={seriesKeys}
                 />
               )}
               cursor={{ stroke: 'color-mix(in srgb, var(--slide-accent) 50%, transparent)' }}
@@ -1092,38 +1217,52 @@ export function SlideBarChartEmbed({ data, stacked = false }: SlideBarChartEmbed
   const nSeries = barKeys.length;
 
   const layout = useMemo(() => {
+    const categoryGap = barCategoryGapProp(BAR_CHART_WIDTH_STRETCH, Math.max(1, nSeries), stacked);
     if (nSeries === 0) {
-      return { barGap: undefined as string | undefined, barCategoryGap: '12%' as const, maxBarSize: 48 };
+      return { barGap: undefined as string | undefined, barCategoryGap: categoryGap, maxBarSize: 64 };
     }
-    if (stacked) {
+    /*
+     * Stacked / single-series: cap bar width so stacks aren’t full-band slabs; keep barCategoryGap
+     * low so category spacing stays tight (min(originalSize, maxBarSize) centers bars in each band).
+     * Grouped: higher maxBarSize so pitch-driven width isn’t capped below the natural band size.
+     * With BAR_CHART_WIDTH_STRETCH > 1, categoryGap grows so bar thickness stays ~constant.
+     */
+    if (stacked || nSeries === 1) {
       return {
         barGap: undefined as string | undefined,
-        barCategoryGap: '8%' as const,
-        maxBarSize: nSeries >= 3 ? 52 : 56,
-      };
-    }
-    if (nSeries === 1) {
-      return {
-        barGap: undefined as string | undefined,
-        barCategoryGap: '6%' as const,
-        maxBarSize: 58,
+        barCategoryGap: categoryGap,
+        maxBarSize: 64 as const,
       };
     }
     return {
-      barGap: (nSeries >= 3 ? '1%' : '2%') as const,
-      barCategoryGap: (nSeries >= 3 ? '10%' : '12%') as const,
-      maxBarSize: nSeries >= 3 ? 40 : 44,
+      barGap: nSeries >= 3 ? ('1%' as const) : ('2%' as const),
+      barCategoryGap: categoryGap,
+      maxBarSize: 64 as const,
     };
   }, [nSeries, stacked]);
 
   const barGapProp = !stacked && nSeries > 1 ? layout.barGap : undefined;
 
+  const nCategories = Math.max(1, chartData.length);
+  const pitchPx = barPitchPxForMinBarWidth(nSeries, stacked);
+  const barChartOuterWidthPx = Math.round(
+    (nCategories * pitchPx + BAR_CHART_SVG_WIDTH_CHROME_PX) * SLIDE_CHART_W_SCALE * BAR_CHART_WIDTH_STRETCH,
+  );
+
   return (
-    <div className="slide-chart-embed" role="img" aria-label={stacked ? 'Animated stacked bar chart' : 'Animated bar chart'}>
+    <div
+      className="slide-chart-embed slide-chart-embed--bar"
+      role="img"
+      aria-label={stacked ? 'Animated stacked bar chart' : 'Animated bar chart'}
+      style={{
+        width: `min(100%, ${barChartOuterWidthPx}px)`,
+        maxWidth: '100%',
+      }}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={chartData}
-          margin={{ top: 8, right: 12, left: -8, bottom: 0 }}
+          margin={RECHARTS_CARTESIAN_MARGIN}
           barGap={barGapProp}
           barCategoryGap={layout.barCategoryGap}
         >
@@ -1317,7 +1456,7 @@ export function SlidePieChartEmbed({ data, legendPosition = 'bottom' }: SlidePie
       ? { top: 8, right: 8, left: 2, bottom: 8 }
       : legendPosition === 'right'
         ? { top: 8, right: 2, left: 8, bottom: 8 }
-        : { top: 8, right: 12, left: 12, bottom: 0 };
+        : { top: 10, right: 12, left: 12, bottom: 10 };
 
   const chartAreaClass =
     legendPosition === 'left' || legendPosition === 'right'
