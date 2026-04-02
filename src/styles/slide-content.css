@@ -65,7 +65,7 @@
   align-self: flex-start;
 }
 
-/* Keep title left on center/right *content* slides; quote layout uses .slide-deck-header--quote for its own alignment */
+/* Keep YAML title/subtitle left on center/right body slides (body alignment is separate); quote uses .slide-deck-header--quote */
 .slide-prose.slide-align--center .slide-deck-header:not(.slide-deck-header--quote),
 .slide-prose.slide-align--right .slide-deck-header:not(.slide-deck-header--quote) {
   text-align: left;
@@ -834,6 +834,24 @@ html.dark .speaker-notes-md .slide-mark {
   text-align: right;
 }
 
+/*
+ * Card ribbon (###) + column section titles: centered when slide uses align: left | right.
+ * Card ## headings stay left (see .slide-card .slide-heading--2).
+ */
+.slide-prose.slide-align--left .slide-card .slide-heading--3,
+.slide-prose.slide-align--right .slide-card .slide-heading--3,
+.slide-prose.slide-align--left .slide-columns__cell .slide-heading--2,
+.slide-prose.slide-align--left .slide-columns__cell .slide-heading--3,
+.slide-prose.slide-align--right .slide-columns__cell .slide-heading--2,
+.slide-prose.slide-align--right .slide-columns__cell .slide-heading--3 {
+  text-align: center;
+}
+
+.slide-prose.slide-align--center .slide-card .slide-heading--2,
+.slide-prose.slide-align--right .slide-card .slide-heading--2 {
+  text-align: left;
+}
+
 /* Per-block alignment (sanitized div.slide-align--* or div.align--*) */
 .slide-prose .slide-align--left,
 .slide-prose .align--left {
@@ -1426,19 +1444,19 @@ html.dark .speaker-notes-md .slide-mark {
   color: var(--slide-text-muted);
 }
 
-/* Rounded outer edge: clip the table; single border model avoids corner “square” glitches */
+/* Rounded clip for overflow; no outer frame — inner grid only */
 .slide-table-wrap {
   margin: 1rem 0;
   border-radius: 0.5rem;
   overflow: hidden;
-  border: 1px solid var(--slide-table-border);
+  border: none;
 }
 
 .slide-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.95em;
-  background: var(--slide-table-header-bg);
+  background: transparent;
 }
 
 .slide-th,
@@ -1449,14 +1467,53 @@ html.dark .speaker-notes-md .slide-mark {
   vertical-align: top;
 }
 
+/* Internal grid only: drop the outside rim (wrap border is also off).
+   Use table sections so we do not strip thead/tbody or tbody/thead lines. */
+.slide-table > thead:first-child tr:first-child > .slide-th,
+.slide-table > thead:first-child tr:first-child > .slide-td {
+  border-top: none;
+}
+
+.slide-table:not(:has(thead)) > tbody:first-child tr:first-child > .slide-th,
+.slide-table:not(:has(thead)) > tbody:first-child tr:first-child > .slide-td {
+  border-top: none;
+}
+
+.slide-table > tbody:last-child tr:last-child > .slide-th,
+.slide-table > tbody:last-child tr:last-child > .slide-td {
+  border-bottom: none;
+}
+
+.slide-table:not(:has(tbody)) > thead:last-child tr:last-child > .slide-th,
+.slide-table:not(:has(tbody)) > thead:last-child tr:last-child > .slide-td {
+  border-bottom: none;
+}
+
+.slide-table tr > .slide-th:not(:only-child):first-child,
+.slide-table tr > .slide-td:not(:only-child):first-child {
+  border-left: none;
+}
+
+.slide-table tr > .slide-th:not(:only-child):last-child,
+.slide-table tr > .slide-td:not(:only-child):last-child {
+  border-right: none;
+}
+
+/* Single row / single cell: strips clear top+bottom — restore one outline */
+.slide-table:not(:has(thead)) > tbody:only-child > tr:only-child > .slide-th:only-child,
+.slide-table:not(:has(thead)) > tbody:only-child > tr:only-child > .slide-td:only-child,
+.slide-table:not(:has(tbody)) > thead:only-child > tr:only-child > .slide-th:only-child {
+  border: 1px solid var(--slide-table-border);
+}
+
 .slide-th {
-  background: var(--slide-table-header-bg);
+  background: transparent;
   color: var(--slide-heading-color);
   font-weight: 600;
 }
 
 .slide-td {
-  background: color-mix(in srgb, var(--slide-bg, #18181b) 94%, var(--slide-table-header-bg));
+  background: transparent;
 }
 
 .slide-a {
@@ -1564,7 +1621,7 @@ html.dark .speaker-notes-md .slide-mark {
   line-height: 1.2;
   color: var(--slide-heading-color);
   margin-bottom: 0.5rem;
-  text-align: left;
+  text-align: center;
 }
 
 .slide-columns__cell p,
@@ -1574,6 +1631,15 @@ html.dark .speaker-notes-md .slide-mark {
   line-height: var(--slide-line-height-body);
   color: var(--slide-text);
   margin: 0 0 0.5rem;
+}
+
+.slide-columns__cell p {
+  font-size: calc(var(--slide-font-size-body) * 0.88);
+}
+
+.slide-columns__cell .slide-ul,
+.slide-columns__cell .slide-ol {
+  font-size: calc(var(--slide-font-size-body) * 0.88);
 }
 
 .slide-columns__cell strong {
@@ -1703,7 +1769,7 @@ html.dark .speaker-notes-md .slide-mark {
 /* Banner: first ### in cell — full-bleed ribbon (darker than card surface) */
 .slide-card .slide-heading--3 {
   font-family: var(--slide-font-body);
-  font-size: calc(var(--slide-font-size-body) * 0.72);
+  font-size: calc(var(--slide-font-size-body) * 0.62);
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1723,45 +1789,51 @@ html.dark .speaker-notes-md .slide-mark {
   border-radius: 0;
 }
 
-/* Hero stat: ## in cell */
+/* Section title: ## in cell (left; ribbon ### stays centered) */
 .slide-card .slide-heading--2 {
   font-family: var(--slide-font-heading);
-  font-size: clamp(1.35rem, 2vw + 0.75rem, 2rem);
+  font-size: clamp(1.05rem, 1.55vw + 0.52rem, 1.5rem);
   font-weight: 700;
   line-height: 1.1;
-  text-align: center;
+  text-align: left;
   color: var(--slide-card-hero-color);
   margin: 0 0 0.35rem;
 }
 
 .slide-card .slide-card__inner > p {
   font-family: var(--slide-font-body);
-  font-size: var(--slide-font-size-body);
-  line-height: var(--slide-line-height-body);
+  font-size: calc(var(--slide-font-size-body) * 0.78);
+  line-height: 1.44;
   color: var(--slide-text);
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.45rem;
 }
 
 /* Subtitle: first paragraph after hero */
 .slide-card .slide-heading--2 + p {
-  font-size: calc(var(--slide-font-size-body) * 0.88);
-  text-align: center;
+  font-size: calc(var(--slide-font-size-body) * 0.7);
+  line-height: 1.42;
+  text-align: left;
   color: var(--slide-text-muted);
   margin: 0 0 0.85rem;
 }
 
-.slide-card .slide-card__inner > ul {
+.slide-card .slide-card__inner > ul,
+.slide-card .slide-card__inner > ol {
   margin: 0;
-  padding-left: 1.1rem;
+  padding-left: 1.05rem;
   text-align: left;
+  font-size: calc(var(--slide-font-size-body) * 0.78);
+  line-height: 1.44;
 }
 
-.slide-card .slide-card__inner > ul > li {
+.slide-card .slide-card__inner > ul > li,
+.slide-card .slide-card__inner > ol > li {
   margin-bottom: 0.4rem;
   padding-left: 0.15rem;
 }
 
-.slide-card .slide-card__inner > ul > li:last-child {
+.slide-card .slide-card__inner > ul > li:last-child,
+.slide-card .slide-card__inner > ol > li:last-child {
   margin-bottom: 0;
 }
 
