@@ -34,6 +34,7 @@ bun install
 | `bun run deck:export --id deck01 --out ./deck01.zip` | Export one deck to zip |
 | `bun run deck:import --zip ./deck01.zip` | Import deck zip into `decks/` |
 | `bun run screenshots:readme` | Regenerate `docs/readme/*.png` (needs `bun run dev` and [Playwright](https://playwright.dev) Chromium: `bunx playwright install chromium`) |
+| `bun run deck:export-pdf -- --deck <id> --out ./deck.pdf` | Export deck slides to a PDF (1920×1080, no in-app UI; progress bar in the terminal; needs app running and Playwright Chromium; optional `--from` / `--to` / `--working-area`) |
 
 Restart the dev server after adding new files under `decks/` or `themes/` so Vite's glob imports pick them up.
 

@@ -20,6 +20,8 @@ interface WorkingAreaProps {
   persistenceEnabled?: boolean;
   onSaveWorkingArea?: () => void | Promise<void>;
   saveWorkingAreaPending?: boolean;
+  /** PDF/automation: hide toolbar and edit controls. */
+  chromeless?: boolean;
 }
 
 /** Same font stylesheet as `index.html` so iframe previews resolve --slide-font-* stacks. */
@@ -95,6 +97,7 @@ export function WorkingArea({
   persistenceEnabled = false,
   onSaveWorkingArea,
   saveWorkingAreaPending = false,
+  chromeless = false,
 }: WorkingAreaProps) {
   const [showSource, setShowSource] = useState(false);
 
@@ -132,44 +135,46 @@ export function WorkingArea({
       }`}
     >
       {/* Toolbar */}
-      <div
-        className={`flex items-center justify-between px-4 py-2 border-b z-10 ${
-          isDarkMode ? 'bg-zinc-800 border-zinc-700' : 'bg-zinc-100 border-zinc-200'
-        }`}
-      >
-        <div className="flex gap-2">
-          <div
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm ${previewPill}`}
-          >
-            <Code className="w-4 h-4" />
-            {contentType === 'md' ? 'Markdown' : 'HTML'} Preview
+      {!chromeless ? (
+        <div
+          className={`flex items-center justify-between px-4 py-2 border-b z-10 ${
+            isDarkMode ? 'bg-zinc-800 border-zinc-700' : 'bg-zinc-100 border-zinc-200'
+          }`}
+        >
+          <div className="flex gap-2">
+            <div
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm ${previewPill}`}
+            >
+              <Code className="w-4 h-4" />
+              {contentType === 'md' ? 'Markdown' : 'HTML'} Preview
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {hasContent && (
+              <button
+                onClick={() => {
+                  const next = !showSource;
+                  setShowSource(next);
+                  onSourceToggle?.(next);
+                }}
+                className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all duration-200 outline-none ${
+                  showSource
+                    ? isDarkMode
+                      ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
+                      : 'bg-blue-500/15 border-blue-500/40 text-blue-700'
+                    : isDarkMode
+                      ? 'bg-zinc-800/70 border-zinc-700/50 text-zinc-400 hover:text-white hover:bg-zinc-700'
+                      : 'bg-white border-zinc-300 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+                }`}
+                title={showSource ? 'Show preview (Esc)' : 'Edit source (E)'}
+              >
+                <Code className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <div className={`text-xs ${isDarkMode ? 'text-zinc-500' : 'text-zinc-500'}`}>Working Area</div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {hasContent && (
-            <button
-              onClick={() => {
-                const next = !showSource;
-                setShowSource(next);
-                onSourceToggle?.(next);
-              }}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all duration-200 outline-none ${
-                showSource
-                  ? isDarkMode
-                    ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
-                    : 'bg-blue-500/15 border-blue-500/40 text-blue-700'
-                  : isDarkMode
-                    ? 'bg-zinc-800/70 border-zinc-700/50 text-zinc-400 hover:text-white hover:bg-zinc-700'
-                    : 'bg-white border-zinc-300 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
-              }`}
-              title={showSource ? 'Show preview (Esc)' : 'Edit source (E)'}
-            >
-              <Code className="w-3.5 h-3.5" />
-            </button>
-          )}
-          <div className={`text-xs ${isDarkMode ? 'text-zinc-500' : 'text-zinc-500'}`}>Working Area</div>
-        </div>
-      </div>
+      ) : null}
 
       {/* Content — inherits slide palette + font via CSS variables */}
       <div
@@ -201,7 +206,7 @@ export function WorkingArea({
 
         {/* Source editor sidebar */}
         <AnimatePresence>
-          {showSource && hasContent && (
+          {showSource && hasContent && !chromeless && (
             <SourceEditor
               value={htmlContent!}
               onChange={(val) => onContentChange?.(val)}

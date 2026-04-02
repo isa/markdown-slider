@@ -5,10 +5,13 @@ import { Toaster } from 'sonner';
 import App from './app/App.tsx';
 import './styles/index.css';
 
+const pdfExport =
+  typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('pdfExport') === '1';
+
 createRoot(document.getElementById('root')!).render(
   <Fragment>
     <App />
-    <Toaster richColors position="top-center" />
+    {!pdfExport ? <Toaster richColors position="top-center" /> : null}
   </Fragment>,
 );
   

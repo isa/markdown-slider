@@ -142,6 +142,9 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
+# Vite dependency cache (see cacheDir in vite.config.ts)
+vite-cache/
+
 # Deck content: keep only tracked sample deck in git
 decks/*
 !decks/sample-deck/

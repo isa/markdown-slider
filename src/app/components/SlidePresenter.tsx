@@ -30,6 +30,8 @@ interface SlidePresenterProps {
   persistenceEnabled?: boolean;
   onSaveSlide?: () => void | Promise<void>;
   saveSlidePending?: boolean;
+  /** PDF/automation: hide edit chrome (no floating buttons). */
+  chromeless?: boolean;
 }
 
 /** Wraps slide header + body so the block can be vertically centered in the slide when shorter than the viewport. */
@@ -50,6 +52,7 @@ export function SlidePresenter({
   persistenceEnabled = false,
   onSaveSlide,
   saveSlidePending = false,
+  chromeless = false,
 }: SlidePresenterProps) {
   const [showSource, setShowSource] = useState(false);
   const prevSlideRef = useRef(currentSlide);
@@ -201,243 +204,224 @@ export function SlidePresenter({
       ? 'absolute inset-0 flex justify-center items-stretch px-10 py-8 overflow-hidden min-h-0'
       : 'absolute inset-0 flex items-center justify-center px-10 py-8 overflow-hidden min-h-0';
 
+  /** PDF export: skip AnimatePresence + slide transitions — meta updates before exit finishes, so captures were mid-fade. */
+  function renderSlideShell(): ReactNode {
+    return slideType === 'html' ? (
+      <iframe
+        srcDoc={slideContent}
+        className={`w-full h-full border-0 ${chromeless ? 'rounded-none' : 'rounded-lg'}`}
+        title={`Slide ${currentSlide + 1}`}
+        sandbox="allow-scripts"
+      />
+    ) : isCover ? (
+      <div
+        className={rootClass}
+        data-color-mode={isDarkMode ? 'dark' : 'light'}
+        style={theme.cssVariables}
+      >
+        {resolvedCoverBackgroundImage ? (
+          <>
+            <div
+              className="slide-cover-bg-layer"
+              aria-hidden
+              style={{
+                backgroundImage: `url(${JSON.stringify(resolvedCoverBackgroundImage)})`,
+              }}
+            />
+            <div className="slide-cover-bg-overlay" aria-hidden />
+          </>
+        ) : null}
+        {cornerDecoration ? (
+          <SlideCornerDecoration decoration={cornerDecoration} deckId={deckId} slideId={slideFolderId} />
+        ) : null}
+        {title ? (
+          <SlideContentStack className="slide-content-stack--cover">
+            <header className="slide-deck-header slide-deck-header--cover">
+              <div className="slide-deck-header__row slide-deck-header__row--cover">
+                <span
+                  className={`slide-deck-header__title${coverHasBg ? ' slide-deck-header__title--cover-on-photo' : ''}`}
+                >
+                  {title}
+                </span>
+                {subtitle ? (
+                  <span
+                    className={`slide-deck-header__subtitle slide-deck-header__subtitle--cover${coverHasBg ? ' slide-deck-header__subtitle--cover-on-photo' : ''}`}
+                  >
+                    {subtitle}
+                  </span>
+                ) : null}
+              </div>
+            </header>
+          </SlideContentStack>
+        ) : null}
+        {slideLogo ? <SlideLogo logo={slideLogo} deckId={deckId} slideId={slideFolderId} /> : null}
+      </div>
+    ) : isImage ? (
+      <div
+        className={rootClass}
+        data-color-mode={isDarkMode ? 'dark' : 'light'}
+        style={{ ...theme.cssVariables, ...imageSlideCssVars }}
+      >
+        {cornerDecoration ? (
+          <SlideCornerDecoration decoration={cornerDecoration} deckId={deckId} slideId={slideFolderId} />
+        ) : null}
+        <SlideContentStack>
+          <div className="slide-deck-body slide-deck-body--image">
+            <div className="slide-image-layout-stack">
+              <div className="slide-image-layout-figure">
+                <SlideMarkdown
+                  markdown={body}
+                  deckId={deckId}
+                  slideFolderId={slideFolderId}
+                  lineChartData={lineChart}
+                  barChartData={barChart}
+                  pieChartData={pieChart}
+                  pieChartLegendPosition={pieChartLegendPosition}
+                  barChartStacked={barChartStacked}
+                  lineChartArea={lineChartArea}
+                  lineChartEndMarker={lineChartEndMarker}
+                  mermaidNodes={mermaidNodes}
+                />
+              </div>
+              {imageCaption ? <p className="slide-figure-caption">{imageCaption}</p> : null}
+            </div>
+          </div>
+        </SlideContentStack>
+        {slideLogo ? <SlideLogo logo={slideLogo} deckId={deckId} slideId={slideFolderId} /> : null}
+      </div>
+    ) : isQuote ? (
+      <div
+        className={rootClass}
+        data-color-mode={isDarkMode ? 'dark' : 'light'}
+        style={theme.cssVariables}
+      >
+        {cornerDecoration ? (
+          <SlideCornerDecoration decoration={cornerDecoration} deckId={deckId} slideId={slideFolderId} />
+        ) : null}
+        <SlideContentStack className="slide-content-stack--quote">
+          {title ? (
+            <header className="slide-deck-header slide-deck-header--quote">
+              <div className="slide-deck-header__row slide-deck-header__row--quote">
+                <span className="slide-deck-header__title slide-deck-header__title--quote">{title}</span>
+              </div>
+              <div className="slide-deck-header__rule" aria-hidden />
+            </header>
+          ) : null}
+          <div className="slide-deck-body slide-deck-body--quote">
+            <div className="slide-quote-stack">
+              <SlideMarkdown
+                markdown={body}
+                deckId={deckId}
+                slideFolderId={slideFolderId}
+                lineChartData={lineChart}
+                barChartData={barChart}
+                pieChartData={pieChart}
+                pieChartLegendPosition={pieChartLegendPosition}
+                barChartStacked={barChartStacked}
+                lineChartArea={lineChartArea}
+                lineChartEndMarker={lineChartEndMarker}
+                mermaidNodes={mermaidNodes}
+              />
+              {subtitle ? <p className="slide-quote-attribution">{subtitle}</p> : null}
+            </div>
+          </div>
+        </SlideContentStack>
+        {slideLogo ? <SlideLogo logo={slideLogo} deckId={deckId} slideId={slideFolderId} /> : null}
+      </div>
+    ) : (
+      <div
+        className={rootClass}
+        data-color-mode={isDarkMode ? 'dark' : 'light'}
+        style={theme.cssVariables}
+      >
+        {cornerDecoration ? (
+          <SlideCornerDecoration decoration={cornerDecoration} deckId={deckId} slideId={slideFolderId} />
+        ) : null}
+        <SlideContentStack>
+          {title ? (
+            <header className="slide-deck-header">
+              <div className="slide-deck-header__row slide-deck-header__row--stack">
+                <span className="slide-deck-header__title">{title}</span>
+                {subtitle ? <span className="slide-deck-header__subtitle">{subtitle}</span> : null}
+              </div>
+              <div className="slide-deck-header__rule" aria-hidden />
+            </header>
+          ) : null}
+          <div className="slide-deck-body">
+            <SlideMarkdown
+              markdown={body}
+              deckId={deckId}
+              slideFolderId={slideFolderId}
+              lineChartData={lineChart}
+              barChartData={barChart}
+              pieChartData={pieChart}
+              pieChartLegendPosition={pieChartLegendPosition}
+              barChartStacked={barChartStacked}
+              lineChartArea={lineChartArea}
+              lineChartEndMarker={lineChartEndMarker}
+              mermaidNodes={mermaidNodes}
+            />
+          </div>
+        </SlideContentStack>
+        {slideLogo ? <SlideLogo logo={slideLogo} deckId={deckId} slideId={slideFolderId} /> : null}
+      </div>
+    );
+  }
+
   return (
     <div
       className={`h-full w-full overflow-hidden flex transition-colors duration-300 ${isDarkMode ? 'bg-zinc-900' : 'bg-zinc-50'}`}
     >
       <div className="flex-1 min-w-0 h-full relative overflow-hidden" style={{ clipPath: 'inset(0 round 0)' }}>
-        <button
-          onClick={() => {
-            const next = !showSource;
-            setShowSource(next);
-            onSourceToggle?.(next);
-          }}
-          className={`absolute top-4 right-4 z-30 flex items-center justify-center rounded-md border transition-all duration-200 outline-none ${
-            showSource
-              ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
-              : isDarkMode
-                ? 'bg-zinc-800/80 border-zinc-700/50 text-zinc-500 hover:text-white hover:bg-zinc-700'
-                : 'bg-white/80 border-zinc-300 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200'
-          }`}
-          style={{ width: 28, height: 28 }}
-          title={showSource ? 'Close editor (Esc)' : 'Edit source (E)'}
-        >
-          <Code style={{ width: 14, height: 14 }} />
-        </button>
-
-        <AnimatePresence mode="wait" custom={direction} initial={false}>
-          <motion.div
-            key={currentSlide}
-            custom={direction}
-            variants={variants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{
-              duration: 0.2,
-              ease: [0.25, 0.1, 0.25, 1],
-              opacity: { duration: 0.18 },
+        {!chromeless ? (
+          <button
+            onClick={() => {
+              const next = !showSource;
+              setShowSource(next);
+              onSourceToggle?.(next);
             }}
-            className={motionShellClass}
+            className={`absolute top-4 right-4 z-30 flex items-center justify-center rounded-md border transition-all duration-200 outline-none ${
+              showSource
+                ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
+                : isDarkMode
+                  ? 'bg-zinc-800/80 border-zinc-700/50 text-zinc-500 hover:text-white hover:bg-zinc-700'
+                  : 'bg-white/80 border-zinc-300 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200'
+            }`}
+            style={{ width: 28, height: 28 }}
+            title={showSource ? 'Close editor (Esc)' : 'Edit source (E)'}
           >
-            {slideType === 'html' ? (
-              <iframe
-                srcDoc={slideContent}
-                className="w-full h-full border-0 rounded-lg"
-                title={`Slide ${currentSlide + 1}`}
-                sandbox="allow-scripts"
-              />
-            ) : isCover ? (
-              <div
-                className={rootClass}
-                data-color-mode={isDarkMode ? 'dark' : 'light'}
-                style={theme.cssVariables}
-              >
-                {resolvedCoverBackgroundImage ? (
-                  <>
-                    <div
-                      className="slide-cover-bg-layer"
-                      aria-hidden
-                      style={{
-                        backgroundImage: `url(${JSON.stringify(resolvedCoverBackgroundImage)})`,
-                      }}
-                    />
-                    <div className="slide-cover-bg-overlay" aria-hidden />
-                  </>
-                ) : null}
-                {cornerDecoration ? (
-                  <SlideCornerDecoration
-                    decoration={cornerDecoration}
-                    deckId={deckId}
-                    slideId={slideFolderId}
-                  />
-                ) : null}
-                {title ? (
-                  <SlideContentStack className="slide-content-stack--cover">
-                    <header className="slide-deck-header slide-deck-header--cover">
-                      <div className="slide-deck-header__row slide-deck-header__row--cover">
-                        <span
-                          className={`slide-deck-header__title${coverHasBg ? ' slide-deck-header__title--cover-on-photo' : ''}`}
-                        >
-                          {title}
-                        </span>
-                        {subtitle ? (
-                          <span
-                            className={`slide-deck-header__subtitle slide-deck-header__subtitle--cover${coverHasBg ? ' slide-deck-header__subtitle--cover-on-photo' : ''}`}
-                          >
-                            {subtitle}
-                          </span>
-                        ) : null}
-                      </div>
-                    </header>
-                  </SlideContentStack>
-                ) : null}
-                {slideLogo ? (
-                  <SlideLogo logo={slideLogo} deckId={deckId} slideId={slideFolderId} />
-                ) : null}
-              </div>
-            ) : isImage ? (
-              <div
-                className={rootClass}
-                data-color-mode={isDarkMode ? 'dark' : 'light'}
-                style={{ ...theme.cssVariables, ...imageSlideCssVars }}
-              >
-                {cornerDecoration ? (
-                  <SlideCornerDecoration
-                    decoration={cornerDecoration}
-                    deckId={deckId}
-                    slideId={slideFolderId}
-                  />
-                ) : null}
-                <SlideContentStack>
-                  <div className="slide-deck-body slide-deck-body--image">
-                    <div className="slide-image-layout-stack">
-                      <div className="slide-image-layout-figure">
-                        <SlideMarkdown
-                          markdown={body}
-                          deckId={deckId}
-                          slideFolderId={slideFolderId}
-                          lineChartData={lineChart}
-                          barChartData={barChart}
-                          pieChartData={pieChart}
-                          pieChartLegendPosition={pieChartLegendPosition}
-                          barChartStacked={barChartStacked}
-                          lineChartArea={lineChartArea}
-                          lineChartEndMarker={lineChartEndMarker}
-                          mermaidNodes={mermaidNodes}
-                        />
-                      </div>
-                      {imageCaption ? (
-                        <p className="slide-figure-caption">{imageCaption}</p>
-                      ) : null}
-                    </div>
-                  </div>
-                </SlideContentStack>
-                {slideLogo ? (
-                  <SlideLogo logo={slideLogo} deckId={deckId} slideId={slideFolderId} />
-                ) : null}
-              </div>
-            ) : isQuote ? (
-              <div
-                className={rootClass}
-                data-color-mode={isDarkMode ? 'dark' : 'light'}
-                style={theme.cssVariables}
-              >
-                {cornerDecoration ? (
-                  <SlideCornerDecoration
-                    decoration={cornerDecoration}
-                    deckId={deckId}
-                    slideId={slideFolderId}
-                  />
-                ) : null}
-                <SlideContentStack className="slide-content-stack--quote">
-                  {title ? (
-                    <header className="slide-deck-header slide-deck-header--quote">
-                      <div className="slide-deck-header__row slide-deck-header__row--quote">
-                        <span className="slide-deck-header__title slide-deck-header__title--quote">
-                          {title}
-                        </span>
-                      </div>
-                      <div className="slide-deck-header__rule" aria-hidden />
-                    </header>
-                  ) : null}
-                  <div className="slide-deck-body slide-deck-body--quote">
-                    <div className="slide-quote-stack">
-                      <SlideMarkdown
-                        markdown={body}
-                        deckId={deckId}
-                        slideFolderId={slideFolderId}
-                        lineChartData={lineChart}
-                        barChartData={barChart}
-                        pieChartData={pieChart}
-                        pieChartLegendPosition={pieChartLegendPosition}
-                        barChartStacked={barChartStacked}
-                        lineChartArea={lineChartArea}
-                        lineChartEndMarker={lineChartEndMarker}
-                        mermaidNodes={mermaidNodes}
-                      />
-                      {subtitle ? (
-                        <p className="slide-quote-attribution">{subtitle}</p>
-                      ) : null}
-                    </div>
-                  </div>
-                </SlideContentStack>
-                {slideLogo ? (
-                  <SlideLogo logo={slideLogo} deckId={deckId} slideId={slideFolderId} />
-                ) : null}
-              </div>
-            ) : (
-              <div
-                className={rootClass}
-                data-color-mode={isDarkMode ? 'dark' : 'light'}
-                style={theme.cssVariables}
-              >
-                {cornerDecoration ? (
-                  <SlideCornerDecoration
-                    decoration={cornerDecoration}
-                    deckId={deckId}
-                    slideId={slideFolderId}
-                  />
-                ) : null}
-                <SlideContentStack>
-                  {title ? (
-                    <header className="slide-deck-header">
-                      <div className="slide-deck-header__row slide-deck-header__row--stack">
-                        <span className="slide-deck-header__title">{title}</span>
-                        {subtitle ? (
-                          <span className="slide-deck-header__subtitle">{subtitle}</span>
-                        ) : null}
-                      </div>
-                      <div className="slide-deck-header__rule" aria-hidden />
-                    </header>
-                  ) : null}
-                  <div className="slide-deck-body">
-                    <SlideMarkdown
-                      markdown={body}
-                      deckId={deckId}
-                      slideFolderId={slideFolderId}
-                      lineChartData={lineChart}
-                      barChartData={barChart}
-                      pieChartData={pieChart}
-                      pieChartLegendPosition={pieChartLegendPosition}
-                      barChartStacked={barChartStacked}
-                      lineChartArea={lineChartArea}
-                      lineChartEndMarker={lineChartEndMarker}
-                      mermaidNodes={mermaidNodes}
-                    />
-                  </div>
-                </SlideContentStack>
-                {slideLogo ? (
-                  <SlideLogo logo={slideLogo} deckId={deckId} slideId={slideFolderId} />
-                ) : null}
-              </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
+            <Code style={{ width: 14, height: 14 }} />
+          </button>
+        ) : null}
+
+        {chromeless ? (
+          <div key={currentSlide} className={motionShellClass}>
+            {renderSlideShell()}
+          </div>
+        ) : (
+          <AnimatePresence mode="wait" custom={direction} initial={false}>
+            <motion.div
+              key={currentSlide}
+              custom={direction}
+              variants={variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{
+                duration: 0.2,
+                ease: [0.25, 0.1, 0.25, 1],
+                opacity: { duration: 0.18 },
+              }}
+              className={motionShellClass}
+            >
+              {renderSlideShell()}
+            </motion.div>
+          </AnimatePresence>
+        )}
       </div>
 
       <AnimatePresence>
-        {showSource && (
+        {showSource && !chromeless && (
           <SourceEditor
             value={slideContent}
             onChange={(val) => onContentChange?.(val)}

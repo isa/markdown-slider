@@ -5,6 +5,10 @@ import react from '@vitejs/plugin-react'
 import { deckDevApiPlugin } from './scripts/deck-dev-api.mjs'
 
 export default defineConfig({
+  // Default is `node_modules/.vite` (a dot-folder — easy to miss). Use a visible folder so
+  // stale pre-bundles can be cleared with `rm -rf vite-cache` after dependency changes.
+  cacheDir: 'vite-cache',
+
   plugins: [
     // The React and Tailwind plugins are both required for Make, even if
     // Tailwind is not being actively used – do not remove them
@@ -21,7 +25,7 @@ export default defineConfig({
   },
 
   optimizeDeps: {
-    include: ['buffer'],
+    include: ['buffer', 'html-to-image', 'pdf-lib'],
   },
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.

@@ -82,6 +82,28 @@ const SLIDE_CHART_W_SCALE = 1;
 const RECHARTS_CARTESIAN_MARGIN = { top: 12, right: 12, left: -8, bottom: 22 } as const;
 const PATH_ANIM_MS = 780;
 
+/** Worst-case ms until line/area Recharts animations finish (PDF / screenshots). */
+export function slideLineChartSettleMs(nSeries: number): number {
+  const n = Math.max(1, Math.min(MAX_CHART_SERIES, nSeries));
+  const lineLastFinish = PATH_ANIM_MS * (0.35 + (n - 1) * 0.12) + PATH_ANIM_MS;
+  const areaLastFinish = PATH_ANIM_MS * (0.12 * (n - 1)) + PATH_ANIM_MS;
+  return Math.ceil(Math.max(lineLastFinish, areaLastFinish) + 250);
+}
+
+/** Bar motion: grouped vs stacked (see `staggeredBarShape` / `stackedStaggeredBarShape`). */
+export function slideBarChartSettleMs(nCategories: number, nSeries: number, stacked: boolean): number {
+  const nc = Math.max(1, nCategories);
+  const ns = Math.max(1, Math.min(MAX_CHART_SERIES, nSeries));
+  if (stacked) {
+    return Math.ceil((nc - 1) * BAR_STAGGER_MS + ns * BAR_STACKED_SEGMENT_MS + 200);
+  }
+  return Math.ceil((nc - 1) * BAR_STAGGER_MS + (ns - 1) * BAR_SERIES_OFFSET_MS + BAR_GROUPED_GROW_MS + 200);
+}
+
+export function slidePieChartSettleMs(): number {
+  return PATH_ANIM_MS + 250;
+}
+
 /** Align with `barCategoryGap` / `barGap` in `SlideBarChartEmbed` layout. */
 const BAR_LAYOUT_CATEGORY_GAP = 0.06;
 
@@ -1048,11 +1070,14 @@ export function SlideLineChartEmbed({
     [fillUnderLines, lineChartEndMarker, seriesKeys],
   );
 
+  const chartSettleMs = slideLineChartSettleMs(seriesKeys.length);
+
   return (
     <div
       className="slide-chart-embed slide-chart-embed--line"
       role="img"
       aria-label="Animated line and area chart"
+      data-ms-chart-settle-ms={String(chartSettleMs)}
     >
       <div className="slide-chart-embed__chart">
         <ResponsiveContainer width="100%" height="100%">
@@ -1232,12 +1257,14 @@ export function SlideBarChartEmbed({ data, stacked = false }: SlideBarChartEmbed
   const barChartOuterWidthPx = Math.round(
     (nCategories * pitchPx + BAR_CHART_SVG_WIDTH_CHROME_PX) * SLIDE_CHART_W_SCALE * BAR_CHART_WIDTH_STRETCH,
   );
+  const chartSettleMs = slideBarChartSettleMs(chartData.length, nSeries, stacked);
 
   return (
     <div
       className="slide-chart-embed slide-chart-embed--bar"
       role="img"
       aria-label={stacked ? 'Animated stacked bar chart' : 'Animated bar chart'}
+      data-ms-chart-settle-ms={String(chartSettleMs)}
       style={{
         width: `min(100%, ${barChartOuterWidthPx}px)`,
         maxWidth: '100%',
@@ -1482,11 +1509,14 @@ export function SlidePieChartEmbed({ data, legendPosition = 'bottom' }: SlidePie
     </div>
   );
 
+  const chartSettleMs = slidePieChartSettleMs();
+
   return (
     <div
       className={`slide-chart-embed slide-chart-embed--pie slide-chart-embed--pie-legend-${legendPosition}`}
       role="img"
       aria-label="Animated pie chart"
+      data-ms-chart-settle-ms={String(chartSettleMs)}
     >
       {legendPosition === 'left' ? legendList : null}
       {chartBlock}

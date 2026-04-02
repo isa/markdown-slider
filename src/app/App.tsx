@@ -14,6 +14,7 @@ import {
   MessageSquare,
   FilePlus,
   PanelsTopLeft,
+  Download,
 } from 'lucide-react';
 import { stringify as yamlStringify } from 'yaml';
 import { toast } from 'sonner';
@@ -59,6 +60,8 @@ import {
 } from './components/ui/dialog';
 import { Label } from './components/ui/label';
 import { cn } from './components/ui/utils';
+import { Progress } from './components/ui/progress';
+import { captureDeckFramesToPdf, downloadPdfBytes } from './browserPdfExport';
 
 const DECK_META_OVERRIDES_KEY = 'markdown-slider:deck-meta-overrides';
 
@@ -100,6 +103,29 @@ function buildMetadataYamlSnippet(meta: DeckMeta): string {
 }
 
 const INITIAL_DECKS = loadDecks();
+
+/**
+ * When `?pdfExport=1&deck=<id>` is present, open that deck synchronously on first paint.
+ * Otherwise Playwright can run before `useEffect` auto-open, so `[data-ms-slide-frame]` never appears in time.
+ */
+function getInitialDeckStateForPdfExportUrl(): { activeDeckId: string | null; slidesData: SlideData[] } {
+  if (typeof window === 'undefined') return { activeDeckId: null, slidesData: [] };
+  const p = new URLSearchParams(window.location.search);
+  if (p.get('pdfExport') !== '1') return { activeDeckId: null, slidesData: [] };
+  const id = p.get('deck');
+  if (!id || !INITIAL_DECKS.some((d) => d.id === id)) return { activeDeckId: null, slidesData: [] };
+  const deck = INITIAL_DECKS.find((d) => d.id === id)!;
+  return {
+    activeDeckId: deck.id,
+    slidesData: deck.slides.map((slide) => ({
+      ...slide,
+      workingArea: slide.workingArea ? { ...slide.workingArea } : undefined,
+    })),
+  };
+}
+
+const PDF_EXPORT_URL_BOOTSTRAP = getInitialDeckStateForPdfExportUrl();
+
 const paletteOptions = getRegisteredPaletteIds();
 const fontOptions = getRegisteredFontIds();
 const themeOptions = getRegisteredThemeIds();
@@ -154,11 +180,11 @@ function App() {
   const [metaSavePending, setMetaSavePending] = useState(false);
 
   const [selectedDeckId, setSelectedDeckId] = useState<string | null>(initialDeckId);
-  const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
+  const [activeDeckId, setActiveDeckId] = useState<string | null>(() => PDF_EXPORT_URL_BOOTSTRAP.activeDeckId);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showWorkingArea, setShowWorkingArea] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [slidesData, setSlidesData] = useState<SlideData[]>([]);
+  const [slidesData, setSlidesData] = useState<SlideData[]>(() => PDF_EXPORT_URL_BOOTSTRAP.slidesData);
   const [slideSourceOpen, setSlideSourceOpen] = useState(false);
   const [speakerNotesOpen, setSpeakerNotesOpen] = useState(false);
   const [workingSourceOpen, setWorkingSourceOpen] = useState(false);
@@ -184,10 +210,39 @@ function App() {
   const [copiedMetaYaml, setCopiedMetaYaml] = useState(false);
   const [presentationMode, setPresentationMode] = useState(false);
   const goToSlideInputRef = useRef<HTMLInputElement>(null);
+  const autoOpenedDeckFromUrlRef = useRef(false);
+  /** PDF/Playwright export: full-viewport slide only (no chrome). Set via `?pdfExport=1`. */
+  const [pdfExportMode] = useState(() => new URLSearchParams(window.location.search).get('pdfExport') === '1');
+  /** In-browser PDF download from deck picker: same chromeless layout as URL `pdfExport=1`. */
+  const [inAppPdfExport, setInAppPdfExport] = useState(false);
+  const chromelessPdfExport = pdfExportMode || inAppPdfExport;
+  /** Set when user starts an in-browser PDF export; cleared when done (not on Strict Mode abort so remount can run). */
+  const [browserPdfExportIntent, setBrowserPdfExportIntent] = useState<{ deckId: string } | null>(null);
+  const [browserPdfExportProgress, setBrowserPdfExportProgress] = useState<{ current: number; total: number } | null>(
+    null,
+  );
 
   useEffect(() => {
     void pingDeckDevApi().then(setDevPersistenceEnabled);
   }, []);
+
+  /** PDF export automation: slide vs working-area when chrome is hidden (`?pdfExport=1`). */
+  useEffect(() => {
+    if (!chromelessPdfExport || !activeDeckId) {
+      delete document.documentElement.dataset.msPdfExportView;
+      return;
+    }
+    document.documentElement.dataset.msPdfExportView = showWorkingArea ? 'working' : 'slide';
+  }, [chromelessPdfExport, activeDeckId, showWorkingArea]);
+
+  useEffect(() => {
+    if (!chromelessPdfExport) return;
+    setSlideSourceOpen(false);
+    setWorkingSourceOpen(false);
+    setGoToSlideOpen(false);
+    setSpeakerNotesOpen(false);
+    setDeckMetaDialogOpen(false);
+  }, [chromelessPdfExport]);
 
   const activeDeck = useMemo(
     () => decksCatalog.find((deck) => deck.id === activeDeckId) ?? null,
@@ -225,6 +280,29 @@ function App() {
   const totalSlides = slidesData.length;
   const currentSlideData = slidesData[currentSlide];
   const hasWorkingArea = !!currentSlideData?.workingArea;
+
+  const pdfExportGoToSlide = useCallback(
+    (index1Based: number) => {
+      if (!activeDeckId || totalSlides < 1) return;
+      const idx = Math.max(0, Math.min(index1Based - 1, totalSlides - 1));
+      setShowWorkingArea(false);
+      setCurrentSlide(idx);
+    },
+    [activeDeckId, totalSlides],
+  );
+
+  useEffect(() => {
+    if (!chromelessPdfExport || !activeDeckId) {
+      delete (window as unknown as { __markdownSliderPdfExport?: unknown }).__markdownSliderPdfExport;
+      return;
+    }
+    (window as unknown as { __markdownSliderPdfExport: { goToSlide: (n: number) => void } }).__markdownSliderPdfExport =
+      { goToSlide: pdfExportGoToSlide };
+    return () => {
+      delete (window as unknown as { __markdownSliderPdfExport?: unknown }).__markdownSliderPdfExport;
+    };
+  }, [chromelessPdfExport, activeDeckId, pdfExportGoToSlide]);
+
   const activeDeckThemeDefaults = useMemo((): DeckSlideThemeDefaults | undefined => {
     if (!activeDeck) return undefined;
     const m = mergeDeckMeta(activeDeck.meta, deckMetaOverrides[activeDeck.id]);
@@ -379,6 +457,71 @@ function App() {
     nextUrl.searchParams.set('deck', deck.id);
     window.history.replaceState({}, '', nextUrl.toString());
   }, [decksCatalog]);
+
+  const handleDownloadDeckPdf = useCallback(() => {
+    if (!selectedDeckId) return;
+    const deck = decksCatalog.find((d) => d.id === selectedDeckId);
+    if (!deck) return;
+    setBrowserPdfExportIntent({ deckId: selectedDeckId });
+    setBrowserPdfExportProgress({ current: 0, total: deck.slides.length });
+    setInAppPdfExport(true);
+    openDeck(selectedDeckId);
+  }, [selectedDeckId, decksCatalog, openDeck]);
+
+  /** When landing with `?deck=<id>`, open that deck once (automation + shareable links). PDF export may already hydrate from `PDF_EXPORT_URL_BOOTSTRAP`. */
+  useEffect(() => {
+    if (autoOpenedDeckFromUrlRef.current) return;
+    const id = new URLSearchParams(window.location.search).get('deck');
+    if (!id || !INITIAL_DECKS.some((d) => d.id === id)) {
+      autoOpenedDeckFromUrlRef.current = true;
+      return;
+    }
+    if (pdfExportMode && activeDeckId === id) {
+      autoOpenedDeckFromUrlRef.current = true;
+      return;
+    }
+    autoOpenedDeckFromUrlRef.current = true;
+    openDeck(id);
+  }, [openDeck, activeDeckId, pdfExportMode]);
+
+  useEffect(() => {
+    if (!browserPdfExportIntent || activeDeckId !== browserPdfExportIntent.deckId) return;
+    if (totalSlides < 1) return;
+
+    const ac = new AbortController();
+
+    (async () => {
+      try {
+        const bytes = await captureDeckFramesToPdf({
+          totalSlides,
+          goToSlide: pdfExportGoToSlide,
+          onProgress: (current, total) => {
+            if (!ac.signal.aborted) setBrowserPdfExportProgress({ current, total });
+          },
+          shouldAbort: () => ac.signal.aborted,
+        });
+        if (ac.signal.aborted) return;
+        const title = effectiveDeckMeta?.title ?? activeDeckId ?? 'deck';
+        const base = title
+          .replace(/[^\w\-]+/g, '-')
+          .replace(/^-+|-+$/g, '');
+        downloadPdfBytes(bytes, `${base || 'deck'}.pdf`);
+        toast.success('PDF downloaded');
+      } catch (e) {
+        if (ac.signal.aborted) return;
+        if (e instanceof DOMException && e.name === 'AbortError') return;
+        toast.error(e instanceof Error ? e.message : 'Could not build PDF');
+      } finally {
+        if (!ac.signal.aborted) {
+          setInAppPdfExport(false);
+          setBrowserPdfExportIntent(null);
+          setBrowserPdfExportProgress(null);
+        }
+      }
+    })();
+
+    return () => ac.abort();
+  }, [browserPdfExportIntent, activeDeckId, totalSlides, pdfExportGoToSlide]);
 
   useEffect(() => {
     if (activeDeckId || !initialDeckId) return;
@@ -585,6 +728,14 @@ function App() {
     await exitFullscreenDom();
   }, []);
 
+  const goToDeckPicker = useCallback(() => {
+    void exitPresentation();
+    setActiveDeckId(null);
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.delete('deck');
+    window.history.replaceState({}, '', nextUrl.toString());
+  }, [exitPresentation]);
+
   const enterPresentation = useCallback(() => {
     setPresentationMode(true);
   }, []);
@@ -621,6 +772,7 @@ function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (deckMetaDialogOpen) return;
+      if (chromelessPdfExport && activeDeckId) return;
 
       const target = e.target as HTMLElement;
       const tag = target?.tagName;
@@ -754,10 +906,15 @@ function App() {
     exitPresentation,
     deckMetaDialogOpen,
     speakerNotesOpen,
+    chromelessPdfExport,
+    activeDeckId,
   ]);
 
   // State-colored border + glow (same logic in light and dark; base shadow only differs)
   const getCardGlow = (isDark: boolean): { className: string; style: React.CSSProperties } => {
+    if (chromelessPdfExport) {
+      return { className: '', style: {} };
+    }
     const base = isDark ? '0 4px 24px rgba(0,0,0,0.2)' : '0 4px 24px rgba(0,0,0,0.1)';
     const t: React.CSSProperties = { transition: 'box-shadow 0.5s, border-color 0.5s' };
     if (!showWorkingArea && slideSourceOpen) {
@@ -899,12 +1056,23 @@ function App() {
                       {openDeckDateLabel ? ` · ${openDeckDateLabel}` : ''}
                     </p>
                   </div>
-                  <div className="mt-5 flex justify-end">
+                  <div className="mt-5 flex flex-row flex-nowrap items-center justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleDownloadDeckPdf}
+                      disabled={!selectedDeckId || browserPdfExportProgress !== null}
+                      size="lg"
+                      className="gap-2 shrink-0"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download PDF
+                    </Button>
                     <Button
                       onClick={() => selectedDeckId && openDeck(selectedDeckId)}
-                      disabled={!selectedDeckId}
+                      disabled={!selectedDeckId || browserPdfExportProgress !== null}
                       size="lg"
-                      className="gap-2"
+                      className="gap-2 shrink-0"
                     >
                       <FolderOpen className="w-4 h-4" />
                       Open deck
@@ -1027,7 +1195,7 @@ function App() {
   }
 
   const speakerNotesSheet =
-    activeDeckId && currentSlideData ? (
+    activeDeckId && currentSlideData && !chromelessPdfExport ? (
       <SpeakerNotesSheet
         key={currentSlideData.id}
         open={speakerNotesOpen}
@@ -1045,9 +1213,42 @@ function App() {
 
   return (
     <div
-      className={`h-screen w-screen flex items-center justify-center transition-colors duration-300 p-8 ${isDarkMode ? 'bg-zinc-950' : 'bg-zinc-200'}`}
+      className={`h-screen w-screen transition-colors duration-300 ${
+        chromelessPdfExport
+          ? 'p-0'
+          : 'flex items-center justify-center p-8'
+      } ${isDarkMode ? 'bg-zinc-950' : 'bg-zinc-200'}`}
     >
-      {goToSlideOpen ? (
+      {browserPdfExportProgress && inAppPdfExport ? (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-[2px]"
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <div
+            className={`rounded-xl border px-6 py-5 shadow-xl w-[min(100%,22rem)] ${isDarkMode ? 'bg-zinc-900 border-zinc-600' : 'bg-white border-zinc-300'}`}
+          >
+            <p className={`text-sm font-medium mb-3 ${isDarkMode ? 'text-zinc-100' : 'text-zinc-900'}`}>
+              Exporting PDF…
+            </p>
+            <Progress
+              value={
+                browserPdfExportProgress.total > 0
+                  ? (browserPdfExportProgress.current / browserPdfExportProgress.total) * 100
+                  : 0
+              }
+              className="h-2"
+            />
+            <p className={`mt-2 text-xs tabular-nums ${isDarkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
+              {browserPdfExportProgress.current === browserPdfExportProgress.total
+                ? 'Finishing…'
+                : `Slide ${browserPdfExportProgress.current + 1} of ${browserPdfExportProgress.total}`}
+            </p>
+          </div>
+        </div>
+      ) : null}
+      {goToSlideOpen && !chromelessPdfExport ? (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-[2px]"
           role="dialog"
@@ -1088,10 +1289,21 @@ function App() {
         </div>
       ) : null}
       <div
-        className={`w-full h-full flex flex-col overflow-hidden transition-colors duration-300 rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.3)] border ${isDarkMode ? 'bg-zinc-900 border-zinc-800/60' : 'bg-white border-zinc-300'}`}
+        className={`w-full h-full flex flex-col overflow-hidden transition-colors duration-300 ${
+          chromelessPdfExport
+            ? `rounded-none border-0 shadow-none ${isDarkMode ? 'bg-zinc-900' : 'bg-white'}`
+            : `rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.3)] border ${isDarkMode ? 'bg-zinc-900 border-zinc-800/60' : 'bg-white border-zinc-300'}`
+        }`}
       >
+        {activeDeckId && chromelessPdfExport ? (
+          <span id="ms-export-slide-meta" className="sr-only" aria-hidden>
+            {currentSlide + 1} / {totalSlides}
+          </span>
+        ) : null}
         {/* Title bar — deck name uses same hue as chrome, stepped down with opacity (not flat gray) */}
-        <div className="shrink-0 px-6 py-4 grid grid-cols-[1fr_auto_1fr] items-center gap-x-3 gap-y-2">
+        <div
+          className={`shrink-0 px-6 py-4 grid grid-cols-[1fr_auto_1fr] items-center gap-x-3 gap-y-2 ${chromelessPdfExport ? 'hidden' : ''}`}
+        >
           <div
             className={`min-w-0 flex justify-start ${
               showWorkingArea
@@ -1136,10 +1348,7 @@ function App() {
           >
             <button
               type="button"
-              onClick={() => {
-                void exitPresentation();
-                setActiveDeckId(null);
-              }}
+              onClick={goToDeckPicker}
               className={`w-9 h-9 flex items-center justify-center rounded-full backdrop-blur-sm border transition-all duration-200 outline-none ${isDarkMode ? 'bg-zinc-800/70 border-zinc-600/50 hover:bg-zinc-700 text-white' : 'bg-white/70 border-zinc-300 hover:bg-zinc-200 text-zinc-700'}`}
               title="Back to deck picker"
               aria-label="Back to deck picker"
@@ -1194,16 +1403,18 @@ function App() {
         </div>
 
         {/* Inner content area - flips as a whole (perspective on flip layer only so slide nav stays flat / horizontal) */}
-        <div className="flex-1 min-h-0 flex flex-col min-h-0 relative px-6 pb-6 pt-1">
+        <div
+          className={`flex-1 min-h-0 flex flex-col min-h-0 relative ${chromelessPdfExport ? 'p-0' : 'px-6 pb-6 pt-1'}`}
+        >
           <AnimatePresence mode="wait" initial={false}>
             {!showWorkingArea ? (
               <motion.div
                 key="slide"
-                initial={{ rotateY: -90, opacity: 0 }}
+                initial={chromelessPdfExport ? false : { rotateY: -90, opacity: 0 }}
                 animate={{ rotateY: 0, opacity: 1 }}
-                exit={{ rotateY: 90, opacity: 0 }}
-                transition={{ duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
-                className="w-full h-full flex items-center gap-8 md:gap-10"
+                exit={chromelessPdfExport ? { opacity: 1 } : { rotateY: 90, opacity: 0 }}
+                transition={{ duration: chromelessPdfExport ? 0 : 0.32, ease: [0.4, 0, 0.2, 1] }}
+                className={`w-full h-full flex items-center ${chromelessPdfExport ? 'gap-0' : 'gap-8 md:gap-10'}`}
                 style={{
                   transformPerspective: 1600,
                   transformStyle: 'preserve-3d',
@@ -1211,18 +1422,23 @@ function App() {
                 }}
               >
                 {/* Previous arrow */}
-                <button
-                  onClick={prevSlide}
-                  disabled={currentSlide === 0}
-                  className={`relative z-10 shrink-0 w-10 h-10 flex items-center justify-center rounded-lg border transition-colors outline-none disabled:opacity-0 disabled:pointer-events-none ${isDarkMode ? 'border-zinc-700 bg-zinc-800/95 hover:bg-zinc-700 text-white shadow-sm' : 'border-zinc-300 bg-zinc-100 hover:bg-zinc-200 text-zinc-700'}`}
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
+                {!chromelessPdfExport ? (
+                  <button
+                    onClick={prevSlide}
+                    disabled={currentSlide === 0}
+                    className={`relative z-10 shrink-0 w-10 h-10 flex items-center justify-center rounded-lg border transition-colors outline-none disabled:opacity-0 disabled:pointer-events-none ${isDarkMode ? 'border-zinc-700 bg-zinc-800/95 hover:bg-zinc-700 text-white shadow-sm' : 'border-zinc-300 bg-zinc-100 hover:bg-zinc-200 text-zinc-700'}`}
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                ) : null}
 
                 {/* Slide card */}
                 <div
-                  className={`flex-1 h-full min-h-0 relative overflow-hidden rounded-2xl border ${cardGlow.className}`}
-                  style={cardGlow.style}
+                  data-ms-slide-frame
+                  className={`flex-1 h-full min-w-0 min-h-0 relative overflow-hidden ${
+                    chromelessPdfExport ? 'rounded-none border-0' : `rounded-2xl border ${cardGlow.className}`
+                  }`}
+                  style={chromelessPdfExport ? undefined : cardGlow.style}
                 >
                   <SlidePresenter
                     slideContent={currentSlideData?.content ?? '# No content'}
@@ -1237,34 +1453,48 @@ function App() {
                     persistenceEnabled={devPersistenceEnabled}
                     onSaveSlide={handleSaveSlideSource}
                     saveSlidePending={slideSavePending}
+                    chromeless={chromelessPdfExport}
                   />
-                  {presentationMode ? <PresentationInkLayer key={`ink-slide-${currentSlide}`} /> : null}
+                  {presentationMode && !chromelessPdfExport ? <PresentationInkLayer key={`ink-slide-${currentSlide}`} /> : null}
                   {speakerNotesSheet}
                 </div>
 
                 {/* Next arrow */}
-                <button
-                  onClick={nextSlide}
-                  disabled={currentSlide === totalSlides - 1}
-                  className={`relative z-10 shrink-0 w-10 h-10 flex items-center justify-center rounded-lg border transition-colors outline-none disabled:opacity-0 disabled:pointer-events-none ${isDarkMode ? 'border-zinc-700 bg-zinc-800/95 hover:bg-zinc-700 text-white shadow-sm' : 'border-zinc-300 bg-zinc-100 hover:bg-zinc-200 text-zinc-700'}`}
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
+                {!chromelessPdfExport ? (
+                  <button
+                    onClick={nextSlide}
+                    disabled={currentSlide === totalSlides - 1}
+                    className={`relative z-10 shrink-0 w-10 h-10 flex items-center justify-center rounded-lg border transition-colors outline-none disabled:opacity-0 disabled:pointer-events-none ${isDarkMode ? 'border-zinc-700 bg-zinc-800/95 hover:bg-zinc-700 text-white shadow-sm' : 'border-zinc-300 bg-zinc-100 hover:bg-zinc-200 text-zinc-700'}`}
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                ) : null}
               </motion.div>
             ) : (
               <motion.div
                 key="working"
-                initial={{ rotateY: -90, opacity: 0 }}
+                data-ms-slide-frame
+                initial={chromelessPdfExport ? false : { rotateY: -90, opacity: 0 }}
                 animate={{ rotateY: 0, opacity: 1 }}
-                exit={{ rotateY: 90, opacity: 0 }}
-                transition={{ duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
-                className={`w-full h-full min-h-0 relative overflow-hidden rounded-2xl border ${cardGlow.className}`}
-                style={{
-                  transformPerspective: 1600,
-                  transformStyle: 'preserve-3d',
-                  backfaceVisibility: 'hidden',
-                  ...cardGlow.style,
-                }}
+                exit={chromelessPdfExport ? { opacity: 1 } : { rotateY: 90, opacity: 0 }}
+                transition={{ duration: chromelessPdfExport ? 0 : 0.32, ease: [0.4, 0, 0.2, 1] }}
+                className={`w-full h-full min-h-0 relative overflow-hidden ${
+                  chromelessPdfExport ? 'rounded-none border-0' : `rounded-2xl border ${cardGlow.className}`
+                }`}
+                style={
+                  chromelessPdfExport
+                    ? {
+                        transformPerspective: 1600,
+                        transformStyle: 'preserve-3d',
+                        backfaceVisibility: 'hidden',
+                      }
+                    : {
+                        transformPerspective: 1600,
+                        transformStyle: 'preserve-3d',
+                        backfaceVisibility: 'hidden',
+                        ...cardGlow.style,
+                      }
+                }
               >
                 <WorkingArea
                   htmlContent={currentSlideData?.workingArea?.content}
@@ -1278,8 +1508,9 @@ function App() {
                   persistenceEnabled={devPersistenceEnabled}
                   onSaveWorkingArea={handleSaveWorkingAreaSource}
                   saveWorkingAreaPending={workingSavePending}
+                  chromeless={chromelessPdfExport}
                 />
-                {presentationMode ? <PresentationInkLayer key={`ink-working-${currentSlide}`} /> : null}
+                {presentationMode && !chromelessPdfExport ? <PresentationInkLayer key={`ink-working-${currentSlide}`} /> : null}
                 {speakerNotesSheet}
               </motion.div>
             )}
@@ -1287,7 +1518,9 @@ function App() {
         </div>
 
         {/* Footer: equal side columns so slide controls stay visually centered */}
-        <div className="shrink-0 pb-6 px-6 pt-1 grid grid-cols-[1fr_auto_1fr] items-center gap-x-4 gap-y-2">
+        <div
+          className={`shrink-0 pb-6 px-6 pt-1 grid grid-cols-[1fr_auto_1fr] items-center gap-x-4 gap-y-2 ${chromelessPdfExport ? 'hidden' : ''}`}
+        >
           <span
             className={`text-[10px] min-w-0 justify-self-start text-left ${isDarkMode ? 'text-zinc-600' : 'text-zinc-400'}`}
           >
@@ -1360,7 +1593,7 @@ function App() {
         </div>
       </div>
 
-      <Dialog open={deckMetaDialogOpen} onOpenChange={setDeckMetaDialogOpen}>
+      <Dialog open={deckMetaDialogOpen && !chromelessPdfExport} onOpenChange={setDeckMetaDialogOpen}>
         <DialogContent
           onOpenAutoFocus={(e) => {
             e.preventDefault();
