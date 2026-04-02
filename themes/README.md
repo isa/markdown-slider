@@ -77,6 +77,17 @@ Same structure, but **`css:`** should only set typography-related variables (`--
 
 Per-slide overrides under **`slide:`** in frontmatter merge on top (see `src/app/slideThemes.ts` `OVERRIDE_KEYS`). Staggered entrance without a separate theme: **`slide: { entrance: stagger }`**.
 
+**Slide card width** — default max width is `56rem` on `.slide-root`. Override with **`width`** or **`maxWidth`** (top-level or under `slide:`), using any CSS length (e.g. `90%`, `72rem`, `min(100%, 48rem)`):
+
+```yaml
+width: 90%
+```
+
+```yaml
+slide:
+  maxWidth: min(100%, 52rem)
+```
+
 ## CSS variables
 
 Typography: `--slide-font-heading`, `--slide-font-body`, `--slide-font-mono`, sizes, line height.

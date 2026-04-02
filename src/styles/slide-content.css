@@ -2,7 +2,7 @@
 
 .slide-root {
   width: 100%;
-  max-width: 56rem;
+  max-width: var(--slide-root-max-width, 56rem);
   margin-inline: auto;
   background: var(--slide-bg);
   --slide-card-radius: 0.75rem;
@@ -316,8 +316,8 @@
   z-index: 3;
   padding: 1.5rem 2rem;
   box-sizing: border-box;
-  /* Keep typography line length where the card used to be a centered 56rem column */
-  max-width: 56rem;
+  /* Keep typography line length where the card used to be a centered column (default 56rem) */
+  max-width: var(--slide-root-max-width, 56rem);
   margin-inline: auto;
   width: 100%;
 }

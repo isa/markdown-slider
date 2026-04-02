@@ -1,17 +1,19 @@
-import { useState, useEffect } from 'react';
-import { Terminal } from './Terminal';
-import { Code, Terminal as TerminalIcon } from 'lucide-react';
+import { useState, useEffect, type CSSProperties } from 'react';
+import { Code } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
-import ReactMarkdown from 'react-markdown';
+import { SlideMarkdownBody } from './SlideMarkdown';
 import { SourceEditor } from './SourceEditor';
-
-type WorkingMode = 'content' | 'terminal';
+import type { ResolvedSlideTheme } from '../slideThemes';
 
 interface WorkingAreaProps {
   htmlContent?: string;
   workingAreaType?: 'md' | 'html';
   /** When false, toolbar and preview chrome match light theme (slides). */
   isDarkMode?: boolean;
+  /** Resolved palette + font for the current slide (matches main slide card). */
+  slideTheme?: ResolvedSlideTheme;
+  deckId?: string;
+  slideFolderId?: string;
   onContentChange?: (content: string) => void;
   onSourceToggle?: (open: boolean) => void;
   /** Dev server: persist working-area source to disk. */
@@ -20,15 +22,22 @@ interface WorkingAreaProps {
   saveWorkingAreaPending?: boolean;
 }
 
-/** Empty preview: theme via `data-theme` + CSS variables (see injectIframeTheme). */
-const DEFAULT_HTML = `<!DOCTYPE html>
-<html data-theme="dark">
-<head><meta charset="utf-8"><style>
-html[data-theme="dark"] { --wa-bg:#1a1a1a; --wa-fg:#e5e5e5; }
-html[data-theme="light"] { --wa-bg:#fafafa; --wa-fg:#18181b; }
-body{margin:0;padding:2rem;font-family:sans-serif;background:var(--wa-bg);color:var(--wa-fg);}
-</style></head>
-<body><h2>HTML Preview</h2><p>No working area content for this slide.</p></body></html>`;
+/** Same font stylesheet as `index.html` so iframe previews resolve --slide-font-* stacks. */
+const IFRAME_FONT_LINKS = `<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cardo:ital,wght@0,400;0,700;1,400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Libre+Franklin:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Lustria&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700&family=Lusitana:wght@400;700&family=Manrope:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&family=Mulish:wght@400;500;600;700&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Oswald:wght@400;500;600;700&family=Ovo&family=Raleway:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Roboto+Serif:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+`;
+
+function serializeSlideCssVarsForIframe(vars: CSSProperties | undefined): string {
+  if (!vars) return '';
+  const parts: string[] = [];
+  for (const [key, value] of Object.entries(vars)) {
+    if (value === undefined || value === null) continue;
+    if (!key.startsWith('--')) continue;
+    parts.push(`${key}: ${String(value)}`);
+  }
+  return parts.join('; ');
+}
 
 /** Sets <html data-theme="light|dark"> so embedded HTML can style per app theme. */
 function injectIframeTheme(html: string, isDark: boolean): string {
@@ -42,25 +51,60 @@ function injectIframeTheme(html: string, isDark: boolean): string {
   });
 }
 
+function injectSlideVarsAndFonts(html: string, vars: CSSProperties | undefined): string {
+  const serialized = serializeSlideCssVarsForIframe(vars);
+  const needFonts = !/<link[^>]+fonts\.googleapis\.com/i.test(html);
+  const fontBlock = needFonts ? IFRAME_FONT_LINKS : '';
+  const varBlock = serialized
+    ? `<style data-wa-slide-theme>:root,html{${serialized}}</style>`
+    : '';
+  const injection = `${fontBlock}${varBlock}`;
+  if (!injection) return html;
+  if (/<head[^>]*>/i.test(html)) {
+    return html.replace(/<head[^>]*>/i, (m) => `${m}${injection}`);
+  }
+  return `${injection}${html}`;
+}
+
+function prepareWorkingAreaIframeDoc(html: string, isDark: boolean, vars: CSSProperties | undefined): string {
+  const out = injectIframeTheme(html, isDark);
+  return injectSlideVarsAndFonts(out, vars);
+}
+
+function buildDefaultWorkingAreaHtml(isDark: boolean): string {
+  const theme = isDark ? 'dark' : 'light';
+  return `<!DOCTYPE html>
+<html data-theme="${theme}">
+<head><meta charset="utf-8" /><style>
+body{margin:0;padding:2rem;font-family:var(--slide-font-body,system-ui,sans-serif);font-size:var(--slide-font-size-body,1rem);line-height:var(--slide-line-height-body,1.5);background:var(--slide-bg,#fafafa);color:var(--slide-text,#18181b);}
+h2{font-family:var(--slide-font-heading);font-size:var(--slide-font-size-h2,1.5rem);font-weight:var(--slide-heading-weight-2,600);color:var(--slide-heading-color);margin:0 0 0.75rem;}
+p{margin:0;font-size:var(--slide-font-size-body,1rem);color:var(--slide-text-muted,var(--slide-text));}
+</style></head>
+<body><h2>HTML Preview</h2><p>No working area content for this slide.</p></body></html>`;
+}
+
 export function WorkingArea({
   htmlContent,
   workingAreaType,
   isDarkMode = false,
+  slideTheme,
+  deckId,
+  slideFolderId,
   onContentChange,
   onSourceToggle,
   persistenceEnabled = false,
   onSaveWorkingArea,
   saveWorkingAreaPending = false,
 }: WorkingAreaProps) {
-  const [mode, setMode] = useState<WorkingMode>('content');
   const [showSource, setShowSource] = useState(false);
 
   const hasContent = !!htmlContent;
   const contentType = workingAreaType ?? 'html';
+  const themeVars = slideTheme?.cssVariables;
 
   useEffect(() => {
     const onToggleSource = () => {
-      if (mode !== 'content' || !hasContent) return;
+      if (!hasContent) return;
       setShowSource((prev) => {
         const next = !prev;
         onSourceToggle?.(next);
@@ -69,14 +113,17 @@ export function WorkingArea({
     };
     window.addEventListener('markdown-slider:toggle-source', onToggleSource);
     return () => window.removeEventListener('markdown-slider:toggle-source', onToggleSource);
-  }, [mode, hasContent, onSourceToggle]);
+  }, [hasContent, onSourceToggle]);
 
-  const tabActive = isDarkMode
+  const previewPill = isDarkMode
     ? 'bg-zinc-700 text-white'
     : 'bg-white text-zinc-900 shadow-sm border border-zinc-200';
-  const tabIdle = isDarkMode
-    ? 'text-zinc-400 hover:text-white hover:bg-zinc-700/50'
-    : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/90';
+
+  const iframeSrcDoc = prepareWorkingAreaIframeDoc(
+    hasContent ? htmlContent! : buildDefaultWorkingAreaHtml(isDarkMode),
+    isDarkMode,
+    themeVars,
+  );
 
   return (
     <div
@@ -91,33 +138,15 @@ export function WorkingArea({
         }`}
       >
         <div className="flex gap-2">
-          <button
-            onClick={() => {
-              setMode('content');
-              setShowSource(false);
-            }}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-              mode === 'content' ? tabActive : tabIdle
-            }`}
+          <div
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm ${previewPill}`}
           >
             <Code className="w-4 h-4" />
             {contentType === 'md' ? 'Markdown' : 'HTML'} Preview
-          </button>
-          <button
-            onClick={() => {
-              setMode('terminal');
-              setShowSource(false);
-            }}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-              mode === 'terminal' ? tabActive : tabIdle
-            }`}
-          >
-            <TerminalIcon className="w-4 h-4" />
-            Terminal
-          </button>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          {mode === 'content' && hasContent && (
+          {hasContent && (
             <button
               onClick={() => {
                 const next = !showSource;
@@ -142,40 +171,37 @@ export function WorkingArea({
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-hidden relative flex">
-        {mode === 'content' ? (
-          contentType === 'md' && htmlContent ? (
+      {/* Content — inherits slide palette + font via CSS variables */}
+      <div
+        className="flex-1 overflow-hidden relative flex min-h-0"
+        style={themeVars as CSSProperties | undefined}
+      >
+        {contentType === 'md' && htmlContent ? (
+          <div className="flex-1 min-w-0 h-full overflow-auto">
             <div
-              className={`flex-1 min-w-0 h-full overflow-auto p-8 ${
-                isDarkMode ? '' : 'bg-zinc-50'
-              }`}
+              className="slide-root slide-prose slide-root--vcenter min-h-full px-8 py-8"
+              data-color-mode={isDarkMode ? 'dark' : 'light'}
+              style={themeVars as CSSProperties | undefined}
             >
-              <div
-                className={`prose prose-lg max-w-none ${
-                  isDarkMode ? 'prose-invert' : 'text-zinc-800'
-                }`}
-              >
-                <ReactMarkdown>{htmlContent}</ReactMarkdown>
+              <div className="slide-content-stack">
+                <div className="slide-deck-body">
+                  <SlideMarkdownBody markdown={htmlContent} deckId={deckId} slideFolderId={slideFolderId} />
+                </div>
               </div>
             </div>
-          ) : (
-            <iframe
-              srcDoc={injectIframeTheme(hasContent ? htmlContent! : DEFAULT_HTML, isDarkMode)}
-              className="flex-1 min-w-0 h-full border-0"
-              title="Working Area Preview"
-              sandbox="allow-scripts"
-            />
-          )
-        ) : (
-          <div className={`flex-1 min-w-0 h-full p-4 ${isDarkMode ? '' : 'bg-zinc-100'}`}>
-            <Terminal />
           </div>
+        ) : (
+          <iframe
+            srcDoc={iframeSrcDoc}
+            className="flex-1 min-w-0 h-full border-0"
+            title="Working Area Preview"
+            sandbox="allow-scripts"
+          />
         )}
 
         {/* Source editor sidebar */}
         <AnimatePresence>
-          {showSource && mode === 'content' && hasContent && (
+          {showSource && hasContent && (
             <SourceEditor
               value={htmlContent!}
               onChange={(val) => onContentChange?.(val)}

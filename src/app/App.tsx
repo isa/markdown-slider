@@ -37,7 +37,13 @@ import {
   relativePathForSpeakerNotes,
   fetchDeckFromDevApi,
 } from './deckPersistence';
-import { getRegisteredFontIds, getRegisteredPaletteIds, getRegisteredThemeIds, type DeckSlideThemeDefaults } from './slideThemes';
+import {
+  getRegisteredFontIds,
+  getRegisteredPaletteIds,
+  getRegisteredThemeIds,
+  parseSlideMarkdown,
+  type DeckSlideThemeDefaults,
+} from './slideThemes';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Card, CardContent } from './components/ui/card';
@@ -228,6 +234,12 @@ function App() {
       defaultFont: m.defaultFont,
     };
   }, [activeDeck, deckMetaOverrides]);
+
+  /** Same palette/font/theme resolution as the main slide — used for working area preview. */
+  const currentSlideResolvedTheme = useMemo(() => {
+    const raw = currentSlideData?.type === 'md' ? (currentSlideData?.content ?? '') : '';
+    return parseSlideMarkdown(raw, isDarkMode, activeDeckThemeDefaults).theme;
+  }, [currentSlideData?.content, currentSlideData?.type, isDarkMode, activeDeckThemeDefaults]);
 
   useEffect(() => {
     try {
@@ -1258,6 +1270,9 @@ function App() {
                   htmlContent={currentSlideData?.workingArea?.content}
                   workingAreaType={currentSlideData?.workingArea?.type}
                   isDarkMode={isDarkMode}
+                  slideTheme={currentSlideResolvedTheme}
+                  deckId={activeDeckId ?? undefined}
+                  slideFolderId={currentSlideData?.id}
                   onContentChange={(content) => updateWorkingAreaContent(currentSlide, content)}
                   onSourceToggle={setWorkingSourceOpen}
                   persistenceEnabled={devPersistenceEnabled}

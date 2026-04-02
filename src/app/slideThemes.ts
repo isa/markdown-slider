@@ -155,14 +155,29 @@ const OVERRIDE_KEYS: Record<string, string> = {
   tableBorder: '--slide-table-border',
   tableHeaderBg: '--slide-table-header-bg',
   columnGap: '--slide-column-gap',
+  /** CSS `max-width` on `.slide-root` (e.g. `90%`, `72rem`, `min(100%, 48rem)`) */
+  maxWidth: '--slide-root-max-width',
+  /** Same as `maxWidth` — if both are set under `slide:`, the later key in OVERRIDE_KEYS wins (`width`). */
+  width: '--slide-root-max-width',
 };
 
-function mergeOverrides(base: SlideCssVars, slide?: Record<string, unknown>): SlideCssVars {
-  if (!slide || typeof slide !== 'object') return { ...base };
+function mergeOverrides(
+  base: SlideCssVars,
+  slide?: Record<string, unknown>,
+  data?: Record<string, unknown>,
+): SlideCssVars {
   const out = { ...base };
-  for (const [key, cssVar] of Object.entries(OVERRIDE_KEYS)) {
-    const v = slide[key];
-    if (v !== undefined && v !== null) out[cssVar] = String(v);
+  if (slide && typeof slide === 'object') {
+    for (const [key, cssVar] of Object.entries(OVERRIDE_KEYS)) {
+      const v = slide[key];
+      if (v !== undefined && v !== null) out[cssVar] = String(v);
+    }
+  }
+  if (out['--slide-root-max-width'] === undefined && data) {
+    const top = data.width ?? data.maxWidth;
+    if (top !== undefined && top !== null && String(top).trim()) {
+      out['--slide-root-max-width'] = String(top).trim();
+    }
   }
   return out;
 }
@@ -175,7 +190,7 @@ export function resolveSlideTheme(
   const { palette, font } = resolveSlidePaletteAndFont(data, deckDefaults);
   const baseVars = mergePaletteAndFontVars(palette, font, colorMode);
   const slide = data.slide as Record<string, unknown> | undefined;
-  const vars = mergeOverrides(baseVars, slide);
+  const vars = mergeOverrides(baseVars, slide, data);
   const cssVariables = vars as unknown as CSSProperties;
 
   let rootClassName = palette.rootClassName;
