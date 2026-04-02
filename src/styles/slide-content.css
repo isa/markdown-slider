@@ -100,7 +100,7 @@
 .slide-deck-header__subtitle {
   font-family: var(--slide-font-heading);
   font-size: calc(var(--slide-font-size-body) * 1.05);
-  font-style: italic;
+  font-style: normal;
   font-weight: 400;
   color: var(--slide-text-muted);
   line-height: 1.2;
@@ -175,7 +175,7 @@
     1.2vw + 1rem,
     calc(var(--slide-font-size-h3) * 1.15)
   );
-  font-style: italic;
+  font-style: normal;
   font-weight: 400;
   color: var(--slide-text-muted);
   line-height: 1.4;
@@ -749,6 +749,25 @@
   line-height: var(--slide-line-height-body);
   color: var(--slide-text);
   text-align: left;
+}
+
+/* Inline sizes below body — use <small> / <span class="slide-text-sm-*"> in markdown (see README) */
+.slide-prose small,
+.slide-prose .slide-text-sm {
+  font-size: 0.88em;
+  color: inherit;
+}
+
+.slide-prose small.slide-text-sm-md,
+.slide-prose .slide-text-sm-md {
+  font-size: 0.8em;
+  color: inherit;
+}
+
+.slide-prose small.slide-text-sm-xs,
+.slide-prose .slide-text-sm-xs {
+  font-size: 0.72em;
+  color: inherit;
 }
 
 /* ==highlight== (remark-highlight-mark); `data-color-mode` set on `.slide-root` in SlidePresenter */
@@ -1518,10 +1537,13 @@ html.dark .speaker-notes-md .slide-mark {
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
 }
 
+/* Shorter than the column block, vertically centered between adjacent cells */
 .slide-columns__rule {
   width: 1px;
   min-width: 1px;
-  align-self: stretch;
+  align-self: center;
+  height: min(58%, 14rem);
+  min-height: 2.25rem;
   margin: 0;
   padding: 0;
   border: none;
@@ -1580,6 +1602,174 @@ html.dark .speaker-notes-md .slide-mark {
     margin-top: 1rem;
     padding-top: 1rem;
     border-top: 1px solid var(--slide-table-border);
+  }
+}
+
+/* --- Premium card grid (@@@cards:N) --- */
+.slide-card-grid {
+  display: grid;
+  width: 100%;
+  margin: 1rem 0;
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+.slide-card-grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.slide-card-grid--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.slide-card-grid--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.slide-card {
+  --slide-card-inner-pad: 1.25rem;
+  /* Light, subtle panel — mostly slide / white, hint of table header */
+  --slide-card-surface: color-mix(
+    in srgb,
+    var(--slide-table-header-bg, #f0f0f0) 14%,
+    var(--slide-bg, #ffffff) 86%
+  );
+  /* Title strip: slightly deeper than card surface (keep contrast gentle) */
+  --slide-card-ribbon-bg: color-mix(in srgb, var(--slide-card-surface) 97%, black 3%);
+  --slide-card-ribbon-fg: var(--slide-heading-color);
+  --slide-card-hero-color: var(--slide-heading-h2-color, var(--slide-heading-color));
+  /* Thin light gray edge — low % of text on slide bg (works light + dark) */
+  --slide-card-border: color-mix(
+    in srgb,
+    var(--slide-text) 9%,
+    var(--slide-bg, #ffffff) 91%
+  );
+  /* Omnidirectional soft shadow (blur only — no offset) */
+  --slide-card-shadow:
+    0 0 10px color-mix(in srgb, var(--slide-text) 4%, transparent),
+    0 0 22px color-mix(in srgb, var(--slide-text) 5%, transparent);
+  min-width: 0;
+  border-radius: calc(var(--slide-card-radius, 0.75rem) + 0.0625rem);
+  background: var(--slide-card-surface);
+  border: 1px solid var(--slide-card-border);
+  box-shadow: var(--slide-card-shadow);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Slight surface shift per column — still neutral; ribbon stays derived from each card’s surface */
+.slide-card--accent-1 {
+  --slide-card-surface: color-mix(
+    in srgb,
+    var(--slide-table-header-bg, #f0f0f0) 12%,
+    var(--slide-bg, #ffffff) 88%
+  );
+}
+
+.slide-card--accent-2 {
+  --slide-card-surface: color-mix(
+    in srgb,
+    var(--slide-table-header-bg, #f0f0f0) 15%,
+    var(--slide-bg, #ffffff) 85%
+  );
+}
+
+.slide-card--accent-3 {
+  --slide-card-surface: color-mix(
+    in srgb,
+    var(--slide-table-header-bg, #f0f0f0) 17%,
+    var(--slide-bg, #ffffff) 83%
+  );
+}
+
+.slide-card--accent-4 {
+  --slide-card-surface: color-mix(
+    in srgb,
+    var(--slide-table-header-bg, #f0f0f0) 20%,
+    var(--slide-bg, #ffffff) 80%
+  );
+}
+
+.slide-card__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  padding: 0 var(--slide-card-inner-pad) var(--slide-card-inner-pad);
+}
+
+/* Banner: first ### in cell — full-bleed ribbon (darker than card surface) */
+.slide-card .slide-heading--3 {
+  font-family: var(--slide-font-body);
+  font-size: calc(var(--slide-font-size-body) * 0.72);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.25;
+  color: var(--slide-card-ribbon-fg);
+  background: var(--slide-card-ribbon-bg);
+  border-bottom: 1px solid color-mix(in srgb, var(--slide-table-border) 28%, transparent);
+  margin: 0 calc(-1 * var(--slide-card-inner-pad)) 0.85rem;
+  padding: 1rem var(--slide-card-inner-pad);
+  min-height: 3.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  box-sizing: border-box;
+  border-radius: 0;
+}
+
+/* Hero stat: ## in cell */
+.slide-card .slide-heading--2 {
+  font-family: var(--slide-font-heading);
+  font-size: clamp(1.35rem, 2vw + 0.75rem, 2rem);
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+  color: var(--slide-card-hero-color);
+  margin: 0 0 0.35rem;
+}
+
+.slide-card .slide-card__inner > p {
+  font-family: var(--slide-font-body);
+  font-size: var(--slide-font-size-body);
+  line-height: var(--slide-line-height-body);
+  color: var(--slide-text);
+  margin: 0 0 0.5rem;
+}
+
+/* Subtitle: first paragraph after hero */
+.slide-card .slide-heading--2 + p {
+  font-size: calc(var(--slide-font-size-body) * 0.88);
+  text-align: center;
+  color: var(--slide-text-muted);
+  margin: 0 0 0.85rem;
+}
+
+.slide-card .slide-card__inner > ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  text-align: left;
+}
+
+.slide-card .slide-card__inner > ul > li {
+  margin-bottom: 0.4rem;
+  padding-left: 0.15rem;
+}
+
+.slide-card .slide-card__inner > ul > li:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 640px) {
+  .slide-card-grid--2,
+  .slide-card-grid--3,
+  .slide-card-grid--4 {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1764,4 +1954,86 @@ html.dark .speaker-notes-md .slide-mark {
 }
 .slide-root--stagger.slide-prose.slide-root--quote:has(.slide-deck-header--quote) .slide-quote-stack > *:nth-child(5) {
   animation-delay: 0.45s;
+}
+
+/* react-icons via `<icon class="fa-star red 2x" />` — utilities live on the wrapper span */
+.slide-icon {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  vertical-align: -0.15em;
+  flex-shrink: 0;
+  color: var(--slide-body-color, inherit);
+}
+
+.slide-icon__svg {
+  flex-shrink: 0;
+  color: inherit;
+  display: block;
+}
+
+/* Font Awesome–style scale (lg, 2x–5x); utilities on wrapper span */
+.slide-icon[class~='lg'],
+.slide-icon--lg {
+  font-size: 1.333em;
+  vertical-align: -0.075em;
+}
+
+.slide-icon[class~='2x'],
+.slide-icon--2x {
+  font-size: 2em;
+  vertical-align: -0.2em;
+}
+
+.slide-icon[class~='3x'],
+.slide-icon--3x {
+  font-size: 3em;
+  vertical-align: -0.25em;
+}
+
+.slide-icon[class~='4x'],
+.slide-icon--4x {
+  font-size: 4em;
+  vertical-align: -0.28em;
+}
+
+.slide-icon[class~='5x'],
+.slide-icon--5x {
+  font-size: 5em;
+  vertical-align: -0.3em;
+}
+
+.slide-icon[class~='red'] {
+  color: var(--slide-icon-red, var(--slide-accent, #c62828));
+}
+
+.slide-icon[class~='yellow'] {
+  color: var(--slide-icon-yellow, #ca8a04);
+}
+
+.slide-icon[class~='green'] {
+  color: var(--slide-icon-green, #16a34a);
+}
+
+.slide-icon[class~='blue'] {
+  color: var(--slide-icon-blue, #2563eb);
+}
+
+.slide-icon[class~='orange'] {
+  color: var(--slide-icon-orange, #ea580c);
+}
+
+.slide-icon[class~='purple'] {
+  color: var(--slide-icon-purple, #9333ea);
+}
+
+.slide-icon[class~='gray'],
+.slide-icon[class~='grey'] {
+  color: var(--slide-icon-gray, var(--slide-text-muted, #64748b));
+}
+
+.slide-icon--missing {
+  font-size: 0.85em;
+  font-weight: 700;
+  color: var(--slide-text-muted);
 }

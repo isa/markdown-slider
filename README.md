@@ -134,6 +134,18 @@ If `palette` / `font` are missing on a slide, deck defaults apply (see **Deck me
 
 Examples: `decks/sample-deck/slide05` (content), `slide07` / `slide51` (cover), `slide06` (infographic), `slide08` (image), `slide59` (quote), `slide61` (corner watermark).
 
+### Smaller inline text
+
+To shrink **one phrase or sentence** without changing slide-level body font, use HTML. Three steps (relative to surrounding text):
+
+| Size | Markup |
+|------|--------|
+| Mild (≈88%) | `<small>...</small>` or `<span class="slide-text-sm">...</span>` |
+| In-between (80%) | `<small class="slide-text-sm-md">...</small>` or `<span class="slide-text-sm-md">...</span>` |
+| Finest (≈72%) | `<small class="slide-text-sm-xs">...</small>` or `<span class="slide-text-sm-xs">...</span>` |
+
+Example: `Normal copy. <small>Mild.</small> <span class="slide-text-sm-md">Middle.</span> <small class="slide-text-sm-xs">Fine print.</small>`
+
 ### Deck image URLs
 
 For **`backgroundImage:`**, **`cornerImage:`**, **`slideLogo:`** / **`logoImage:`**, and markdown **`![](...)`** images, paths resolve as follows:

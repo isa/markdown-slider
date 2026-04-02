@@ -18,14 +18,19 @@ import {
   type PieChartLegendPosition,
 } from './SlideChartEmbeds';
 import { SlideMermaidEmbed, type MermaidNodeStyle } from './SlideMermaidEmbed';
+import { SlideIcon } from './SlideIcon';
 import { resolveSlideFolderAssetUrl } from '../deckAssetUrls';
+
+/** Allows icon id + utility classes (e.g. fa-star red 2x) and explicit name/pack. */
+const slideIconClassPattern = /^[\w\s-]+$/;
 
 const slideSanitizeSchema = {
   ...defaultSchema,
-  tagNames: [...(defaultSchema.tagNames ?? []), 'mark'],
+  tagNames: [...(defaultSchema.tagNames ?? []), 'mark', 'small', 'icon'],
   attributes: {
     ...defaultSchema.attributes,
     mark: [['className', /^slide-[\w-]+$/]],
+    small: [['className', /^slide-[\w-]+$/]],
     div: [
       ...(defaultSchema.attributes?.div ?? []),
       ['className', /^(?:slide-[\w-]+|align--(?:left|center|right))$/],
@@ -35,6 +40,12 @@ const slideSanitizeSchema = {
       ...(defaultSchema.attributes?.code ?? []),
       ['className', /^language-./],
       ['className', /^slide-[\w-]+$/],
+    ],
+    icon: [
+      ['className', slideIconClassPattern],
+      ['class', slideIconClassPattern],
+      ['name', /^[A-Za-z][\w]*$/],
+      ['pack', /^[\w-]+$/],
     ],
   },
 };
@@ -367,12 +378,27 @@ function SlideMarkdownChunk({
             </div>
           );
         },
+        icon: (props) => <SlideIcon {...props} />,
       }}
     >
       {markdown}
     </ReactMarkdown>
   );
 }
+
+type GridEmbedProps = {
+  cells: string[];
+  deckId?: string;
+  slideFolderId?: string;
+  lineChartData?: SlideChartRow[];
+  barChartData?: SlideChartRow[];
+  pieChartData?: SlideChartRow[];
+  pieChartLegendPosition?: PieChartLegendPosition;
+  barChartStacked?: boolean;
+  lineChartArea?: boolean;
+  lineChartEndMarker?: LineChartEndMarker;
+  mermaidNodes?: MermaidNodeStyle;
+};
 
 function ColumnGrid({
   cells,
@@ -386,19 +412,7 @@ function ColumnGrid({
   lineChartArea,
   lineChartEndMarker,
   mermaidNodes,
-}: {
-  cells: string[];
-  deckId?: string;
-  slideFolderId?: string;
-  lineChartData?: SlideChartRow[];
-  barChartData?: SlideChartRow[];
-  pieChartData?: SlideChartRow[];
-  pieChartLegendPosition?: PieChartLegendPosition;
-  barChartStacked?: boolean;
-  lineChartArea?: boolean;
-  lineChartEndMarker?: LineChartEndMarker;
-  mermaidNodes?: MermaidNodeStyle;
-}) {
+}: GridEmbedProps) {
   const n = Math.min(4, Math.max(1, cells.length));
   return (
     <div className={`slide-columns slide-columns--${n} slide-columns--ruled`}>
@@ -423,6 +437,48 @@ function ColumnGrid({
             <div className="slide-columns__rule" role="presentation" aria-hidden />
           ) : null}
         </Fragment>
+      ))}
+    </div>
+  );
+}
+
+function CardGrid({
+  cells,
+  deckId,
+  slideFolderId,
+  lineChartData,
+  barChartData,
+  pieChartData,
+  pieChartLegendPosition,
+  barChartStacked,
+  lineChartArea,
+  lineChartEndMarker,
+  mermaidNodes,
+}: GridEmbedProps) {
+  const n = Math.min(4, Math.max(1, cells.length));
+  return (
+    <div className={`slide-card-grid slide-card-grid--${n}`}>
+      {cells.map((cell, i) => (
+        <article
+          key={i}
+          className={`slide-card slide-card--accent-${(i % 4) + 1}`}
+        >
+          <div className="slide-card__inner">
+            <SlideMarkdownBody
+              markdown={cell}
+              deckId={deckId}
+              slideFolderId={slideFolderId}
+              lineChartData={lineChartData}
+              barChartData={barChartData}
+              pieChartData={pieChartData}
+              pieChartLegendPosition={pieChartLegendPosition}
+              barChartStacked={barChartStacked}
+              lineChartArea={lineChartArea}
+              lineChartEndMarker={lineChartEndMarker}
+              mermaidNodes={mermaidNodes}
+            />
+          </div>
+        </article>
       ))}
     </div>
   );
@@ -473,6 +529,21 @@ export function SlideMarkdown({
           <SlideMarkdownBody
             key={i}
             markdown={seg.content}
+            deckId={deckId}
+            slideFolderId={slideFolderId}
+            lineChartData={lineChartData}
+            barChartData={barChartData}
+            pieChartData={pieChartData}
+            pieChartLegendPosition={pieChartLegendPosition}
+            barChartStacked={barChartStacked}
+            lineChartArea={lineChartArea}
+            lineChartEndMarker={lineChartEndMarker}
+            mermaidNodes={mermaidNodes}
+          />
+        ) : seg.type === 'cards' ? (
+          <CardGrid
+            key={i}
+            cells={seg.cells}
             deckId={deckId}
             slideFolderId={slideFolderId}
             lineChartData={lineChartData}
